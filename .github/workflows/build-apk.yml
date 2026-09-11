@@ -19,6 +19,7 @@ jobs:
       - name: Install dependencies & Build web assets
         run: |
           npm install --include=optional
+          npm install @capacitor/android
           npm run build
 
       - name: Set up JDK 17
