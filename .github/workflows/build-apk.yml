@@ -29,7 +29,8 @@ jobs:
 
       - name: Add Android platform and build
         run: |
-          npx @capacitor/cli add android --appId "com.inventario.app" --appName "Inventario" || true
+          echo '{"appId": "com.inventario.app", "appName": "Inventario", "webDir": "dist"}' > capacitor.config.json
+          npx @capacitor/cli add android
           npx @capacitor/cli sync android
           cd android
           ./gradlew assembleDebug
