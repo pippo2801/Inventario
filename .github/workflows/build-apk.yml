@@ -29,8 +29,9 @@ jobs:
 
       - name: Add Android platform and build
         run: |
-          npx --no-install cap add android || npx cap add android
-          npx cap sync android
+          npx cap init --help > /dev/null 2>&1 || true
+          npx @capacitor/cli add android
+          npx @capacitor/cli sync android
           cd android
           ./gradlew assembleDebug
 
