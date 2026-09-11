@@ -29,7 +29,7 @@ jobs:
 
       - name: Add Android platform and build
         run: |
-          npx cap add android
+          npx --no-install cap add android || npx cap add android
           npx cap sync android
           cd android
           ./gradlew assembleDebug
