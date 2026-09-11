@@ -1,0 +1,6 @@
+{
+  "name": "Studio Ottico Di Pietro",
+  "description": "Gestionale professionale per Studio Ottico Di Pietro: inventario occhiali, ricerca universale con IA, vetrina, promozioni, anagrafica clienti con scansione CF, archivio prescrizioni con OCR, modalità vendita rapida, statistiche con margine lordo, sincronizzazione real-time multi-dispositivo, audit log ed esportazione Flutter/Android.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
