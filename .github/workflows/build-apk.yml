@@ -33,6 +33,15 @@ jobs:
           echo '{"appId": "com.inventario.app", "appName": "Inventario", "webDir": "dist"}' > capacitor.config.json
           npx @capacitor/cli add android
           npx @capacitor/cli sync android
+          
+          # Forza una versione coerente di Kotlin per evitare conflitti di classi duplicate
+          echo "" >> android/build.gradle
+          echo "subprojects {" >> android/build.gradle
+          echo "    configurations.all {" >> android/build.gradle
+          echo "        resolutionStrategy.force 'org.jetbrains.kotlin:kotlin-stdlib:1.8.22', 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22'" >> android/build.gradle
+          echo "    }" >> android/build.gradle
+          echo "}" >> android/build.gradle
+
           cd android
           ./gradlew assembleDebug
 
