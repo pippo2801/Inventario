@@ -441,8 +441,19 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
               </div>
             )}
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex items-center justify-between pt-2">
               <button
+                type="button"
+                onClick={() => {
+                  setShowOcrModal(false);
+                  setShowAddModal(true);
+                }}
+                className="px-3 py-2 rounded-xl bg-teal-900/60 hover:bg-teal-800/80 text-teal-200 text-xs font-semibold border border-teal-700/50 transition-all flex items-center gap-1.5"
+              >
+                <span>➕ Inserimento Manuale</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => setShowOcrModal(false)}
                 className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs"
               >

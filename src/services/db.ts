@@ -11,7 +11,8 @@ import {
   AuditLog,
   AppNotification,
   SyncStatus,
-  StagnantStockSuggestion
+  StagnantStockSuggestion,
+  AppSettings
 } from '../types';
 import {
   initialOrganization,
@@ -921,6 +922,219 @@ class DatabaseService {
       topModel,
     };
   }
+  public getSettings(): AppSettings {
+    const defaults: AppSettings = {
+      menuCategories: {
+        occhiali: true,
+        pazienti: true,
+        prescrizioni: true,
+        vendite: true,
+        attivita: true,
+      },
+      home: {
+        showQuickActions: true,
+        showKpi: true,
+        showRecentActivity: true,
+        showStockAlerts: true,
+        watermarkIntensity: 35,
+      },
+      appearance: {
+        theme: 'light',
+        style: 'editorial',
+      },
+      notifications: {
+        enabled: true,
+      },
+      sync: {
+        enabled: true,
+      },
+    };
+
+    const saved = this.load<AppSettings>('settings', defaults);
+
+    return {
+      ...defaults,
+      ...saved,
+      menuCategories: { ...defaults.menuCategories, ...saved.menuCategories },
+      home: { ...defaults.home, ...saved.home },
+      appearance: { ...defaults.appearance, ...saved.appearance },
+      notifications: { ...defaults.notifications, ...saved.notifications },
+      sync: { ...defaults.sync, ...saved.sync },
+    };
+  }
+
+  public updateSettings(changes: Partial<AppSettings>) {
+    const current = this.getSettings();
+
+    const updated: AppSettings = {
+      ...current,
+      ...changes,
+      menuCategories: {
+        ...current.menuCategories,
+        ...(changes.menuCategories || {}),
+      },
+      home: {
+        ...current.home,
+        ...(changes.home || {}),
+      },
+      appearance: {
+        ...current.appearance,
+        ...(changes.appearance || {}),
+      },
+      notifications: {
+        ...current.notifications,
+        ...(changes.notifications || {}),
+      },
+      sync: {
+        ...current.sync,
+        ...(changes.sync || {}),
+      },
+    };
+
+    this.persist('settings', updated);
+    this.notify();
+  }
+
+  public getCustomCategories(): import('../types').CustomCategory[] {
+    return this.load<import('../types').CustomCategory[]>('custom_categories', []);
+  }
+
+  public createCustomCategory(name: string, description?: string) {
+    const currentUser = this.getCurrentUser();
+    const now = new Date().toISOString();
+
+    const category: import('../types').CustomCategory = {
+      id: crypto.randomUUID(),
+      name: name.trim(),
+      description: description?.trim() || '',
+      eyeglassIds: [],
+      visible: true,
+      createdAt: now,
+      updatedAt: now,
+      createdBy: currentUser.id,
+    };
+
+    const categories = this.getCustomCategories();
+    categories.push(category);
+
+    this.persist('custom_categories', categories);
+    this.notify();
+
+    return category;
+  }
+
+  public updateCustomCategory(
+    id: string,
+    changes: Partial<Pick<import('../types').CustomCategory, 'name' | 'description' | 'visible'>>
+  ) {
+    const categories = this.getCustomCategories();
+    const index = categories.findIndex((category) => category.id === id);
+
+    if (index === -1) return null;
+
+    categories[index] = {
+      ...categories[index],
+      ...changes,
+      name: changes.name !== undefined ? changes.name.trim() : categories[index].name,
+      description:
+        changes.description !== undefined
+          ? changes.description.trim()
+          : categories[index].description,
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.persist('custom_categories', categories);
+    this.notify();
+
+    return categories[index];
+  }
+
+  public deleteCustomCategory(id: string) {
+    const categories = this.getCustomCategories();
+    const filtered = categories.filter((category) => category.id !== id);
+
+    if (filtered.length === categories.length) return false;
+
+    this.persist('custom_categories', filtered);
+    this.notify();
+
+    return true;
+  }
+
+  public addEyeglassesToCategory(categoryId: string, eyeglassIds: string[]) {
+    const categories = this.getCustomCategories();
+    const category = categories.find((item) => item.id === categoryId);
+
+    if (!category) return null;
+
+    category.eyeglassIds = Array.from(
+      new Set([...category.eyeglassIds, ...eyeglassIds])
+    );
+    category.updatedAt = new Date().toISOString();
+
+    this.persist('custom_categories', categories);
+    this.notify();
+
+    return category;
+  }
+
+  public removeEyeglassesFromCategory(categoryId: string, eyeglassIds: string[]) {
+    const categories = this.getCustomCategories();
+    const category = categories.find((item) => item.id === categoryId);
+
+    if (!category) return null;
+
+    const idsToRemove = new Set(eyeglassIds);
+
+    category.eyeglassIds = category.eyeglassIds.filter(
+      (id) => !idsToRemove.has(id)
+    );
+    category.updatedAt = new Date().toISOString();
+
+    this.persist('custom_categories', categories);
+    this.notify();
+
+    return category;
+  }
+
+  public resetSettings() {
+    localStorage.removeItem(STORAGE_PREFIX + 'settings');
+    this.notify();
+  }
+
 }
 
 export const db = new DatabaseService();
+
+import { collection, doc, setDoc, getDocs, Timestamp } from 'firebase/firestore';
+import { dbFirestore } from './firebase';
+
+export async function syncWithCloud() {
+  try {
+    const localEyeglasses = JSON.parse(localStorage.getItem('eyeglasses') || '[]');
+    
+    for (const item of localEyeglasses) {
+      await setDoc(doc(dbFirestore, 'eyeglasses', item.id), {
+        ...item,
+        updatedAt: Timestamp.now()
+      }, { merge: true });
+    }
+
+    const querySnapshot = await getDocs(collection(dbFirestore, 'eyeglasses'));
+    const cloudEyeglasses: any[] = [];
+    querySnapshot.forEach((doc) => {
+      cloudEyeglasses.push(doc.data());
+    });
+
+    if (cloudEyeglasses.length > 0) {
+      localStorage.setItem('eyeglasses', JSON.stringify(cloudEyeglasses));
+    }
+
+    const syncTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    localStorage.setItem('lastSyncTime', syncTime);
+    return { success: true, time: syncTime };
+  } catch (error) {
+    console.error('Errore durante la sincronizzazione:', error);
+    return { success: false, error };
+  }
+}

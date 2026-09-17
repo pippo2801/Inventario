@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { db } from '../services/db';
 import {
   Settings,
@@ -14,6 +14,13 @@ import {
   Database,
   Sliders,
   History,
+  Plus,
+  Pencil,
+  Trash2,
+  Search,
+  Check,
+  X,
+  Tag,
 } from 'lucide-react';
 
 export const SettingsView: React.FC = () => {
@@ -22,7 +29,15 @@ export const SettingsView: React.FC = () => {
   const syncStatus = db.getSyncStatus();
   const auditLogs = db.getAuditLogs();
 
-  const [activeTab, setActiveTab] = useState<'users' | 'sync' | 'backup' | 'audit'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'sync' | 'backup' | 'audit' | 'categories'>('users');
+  const [categoryName, setCategoryName] = useState('');
+  const [categoryDescription, setCategoryDescription] = useState('');
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [categorySearch, setCategorySearch] = useState('');
+  const [selectedEyeglassIds, setSelectedEyeglassIds] = useState<string[]>([]);
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
+  const [editingDescription, setEditingDescription] = useState('');
   const [backupSuccessMessage, setBackupSuccessMessage] = useState('');
 
   const handleExportBackup = () => {
@@ -38,7 +53,75 @@ export const SettingsView: React.FC = () => {
     setTimeout(() => setBackupSuccessMessage(''), 4000);
   };
 
-  const handleImportBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const customCategories = db.getCustomCategories();
+  const eyeglasses = db.getEyeglasses(false);
+
+  const selectedCategory = customCategories.find(
+    (category) => category.id === selectedCategoryId
+  );
+
+  const filteredCategoryEyeglasses = useMemo(() => {
+    const query = categorySearch.trim().toLowerCase();
+
+    if (!query) return eyeglasses;
+
+    return eyeglasses.filter((item) =>
+      `${item.brand} ${item.model} ${item.sku} ${item.color}`
+        .toLowerCase()
+        .includes(query)
+    );
+  }, [eyeglasses, categorySearch]);
+
+  const handleCreateCategory = () => {
+    const name = categoryName.trim();
+    if (!name) return;
+
+    const category = db.createCustomCategory(
+      name,
+      categoryDescription.trim()
+    );
+
+    setCategoryName('');
+    setCategoryDescription('');
+    setSelectedCategoryId(category.id);
+  };
+
+  const handleDeleteCategory = (id: string) => {
+    if (!window.confirm('Eliminare questa categoria? Gli occhiali NON verranno eliminati.')) {
+      return;
+    }
+
+    db.deleteCustomCategory(id);
+
+    if (selectedCategoryId === id) {
+      setSelectedCategoryId(null);
+    }
+  };
+
+  const handleSaveCategoryEdit = () => {
+    if (!editingCategoryId || !editingName.trim()) return;
+
+    db.updateCustomCategory(editingCategoryId, {
+      name: editingName.trim(),
+      description: editingDescription.trim(),
+    });
+
+    setEditingCategoryId(null);
+    setEditingName('');
+    setEditingDescription('');
+  };
+
+  const handleToggleEyeglass = (eyeglassId: string) => {
+    if (!selectedCategoryId) return;
+
+    if (selectedCategory?.eyeglassIds.includes(eyeglassId)) {
+      db.removeEyeglassesFromCategory(selectedCategoryId, [eyeglassId]);
+    } else {
+      db.addEyeglassesToCategory(selectedCategoryId, [eyeglassId]);
+    }
+  };
+
+    const handleImportBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -309,6 +392,147 @@ export const SettingsView: React.FC = () => {
           </div>
         </div>
       )}
+
+      
+      {/* Tab Categories */}
+      {activeTab === 'categories' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Colonna Sinistra: Gestione ed Elenco Categorie */}
+          <div className="space-y-4">
+            <div className="p-4 rounded-2xl bg-slate-900/90 border border-teal-900/60 space-y-3">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <Tag className="w-4 h-4 text-teal-400" />
+                <span>Nuova Categoria Personalizzata</span>
+              </h3>
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  placeholder="Nome categoria (es. Edizione Limitata)"
+                  value={categoryName}
+                  onChange={(e) => setCategoryName(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-teal-800 text-white text-xs"
+                />
+                <input
+                  type="text"
+                  placeholder="Descrizione (opzionale)"
+                  value={categoryDescription}
+                  onChange={(e) => setCategoryDescription(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-teal-800 text-white text-xs"
+                />
+                <button
+                  onClick={handleCreateCategory}
+                  className="w-full py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs transition-all shadow"
+                >
+                  Crea Categoria
+                </button>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-slate-900/90 border border-teal-900/60 space-y-3">
+              <h3 className="text-sm font-bold text-white">Categorie Esistenti ({customCategories.length})</h3>
+              <div className="space-y-2 max-h-[350px] overflow-y-auto">
+                {customCategories.length === 0 ? (
+                  <p className="text-xs text-slate-400 italic">Nessuna categoria personalizzata creata.</p>
+                ) : (
+                  customCategories.map((cat) => (
+                    <div
+                      key={cat.id}
+                      onClick={() => setSelectedCategoryId(cat.id)}
+                      className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
+                        selectedCategoryId === cat.id
+                          ? "bg-teal-950/60 border-teal-500 text-teal-200"
+                          : "bg-slate-950/60 border-slate-800 text-slate-300 hover:border-teal-800"
+                      }`}
+                    >
+                      <div>
+                        <p className="text-xs font-bold text-white">{cat.name}</p>
+                        {cat.description && <p className="text-[11px] text-slate-400">{cat.description}</p>}
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteCategory(cat.id);
+                        }}
+                        className="p-1 rounded hover:bg-red-950/50 text-slate-400 hover:text-red-400 transition-colors"
+                        title="Elimina categoria"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Colonna Destra: Occhiali Associati alla Categoria Selezionata */}
+          <div className="p-4 rounded-2xl bg-slate-900/90 border border-teal-900/60 space-y-4">
+            <div>
+              <h3 className="text-sm font-bold text-white">
+                {selectedCategory ? `Occhiali in: ${selectedCategory.name}` : "Seleziona una Categoria"}
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {selectedCategory ? "Associa o rimuovi montature da questa categoria" : "Scegli una categoria a sinistra per gestire gli occhiali associati"}
+              </p>
+            </div>
+
+            {selectedCategory ? (
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  placeholder="Cerca occhiali per brand, modello, SKU..."
+                  value={categorySearch}
+                  onChange={(e) => setCategorySearch(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-teal-800 text-white text-xs"
+                />
+
+                <div className="space-y-2 max-h-[380px] overflow-y-auto">
+                  {filteredCategoryEyeglasses.map((item) => {
+                    const isAssociated = selectedCategory.eyeglassIds?.includes(item.id);
+                    return (
+                      <div
+                        key={item.id}
+                        className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center justify-between text-xs"
+                      >
+                        <div>
+                          <p className="font-bold text-white">{item.brand} {item.model}</p>
+                          <p className="text-[11px] text-teal-400 font-mono">SKU: {item.sku} • Colore: {item.color}</p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            const currentIds = selectedCategory.eyeglassIds || [];
+                            const updatedIds = isAssociated
+                              ? currentIds.filter((id) => id !== item.id)
+                              : [...currentIds, item.id];
+                            // Aggiorniamo la categoria salvando gli eyeglassIds
+                            if (typeof (db as any).updateCustomCategoryEyeglasses === 'function') {
+                              (db as any).updateCustomCategoryEyeglasses(selectedCategory.id, updatedIds);
+                            } else {
+                              db.updateCustomCategory(selectedCategory.id, { eyeglassIds: updatedIds } as any);
+                            }
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                            isAssociated
+                              ? "bg-red-950/60 border border-red-800 text-red-300 hover:bg-red-900/60"
+                              : "bg-teal-900/80 border border-teal-700 text-teal-100 hover:bg-teal-800"
+                          }`}
+                        >
+                          {isAssociated ? "Rimuovi" : "Associa"}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-center p-6 border-2 border-dashed border-slate-800 rounded-xl">
+                <p className="text-xs text-slate-500">Nessuna categoria attiva selezionata.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
 
       {/* Tab 4: Audit Log (Section 32) */}
       {activeTab === 'audit' && (

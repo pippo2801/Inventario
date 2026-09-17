@@ -69,7 +69,10 @@ export function App() {
       {/* Global Application Header (Sync badge, search button, user switcher) */}
       <Header
         onOpenSearch={() => setIsSearchOpen(true)}
-        onToggleSidebar={() => setIsSidebarOpen(true)}
+        onOpenSidebar={() => setIsSidebarOpen(true)}
+        syncStatus={db.getSyncStatus()}
+        currentUser={db.getCurrentUser()}
+        onNavigate={handleNavigate}
       />
 
       {/* Slide-out Sidebar Drawer */}
@@ -162,9 +165,13 @@ export function App() {
 
       {/* 3. Fast Sale Processing Modal (Section 30) */}
       <FastSaleModal
-        eyeglass={saleTargetEyeglass}
+        isOpen={!!saleTargetEyeglass}
+        preselectedEyeglass={saleTargetEyeglass}
         onClose={() => setSaleTargetEyeglass(null)}
-        onCompleted={() => setSaleTargetEyeglass(null)}
+        onSaleSuccess={() => {
+          setSaleTargetEyeglass(null);
+          setSelectedEyeglass(null);
+        }}
       />
 
       {/* 4. Add New Eyeglass with AI Photo Pre-fill (Sections 20, 26, 27) */}

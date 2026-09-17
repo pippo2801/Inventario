@@ -1,0 +1,23 @@
+import { initializeApp } from 'firebase/app';
+import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
+
+const firebaseConfig = {
+  apiKey: "IL_TUO_API_KEY",
+  authDomain: "tuo-progetto.firebaseapp.com",
+  projectId: "tuo-progetto",
+  storageBucket: "tuo-progetto.appspot.com",
+  messagingSenderId: "TID",
+  appId: "APP_ID"
+};
+
+const app = initializeApp(firebaseConfig);
+export const dbFirestore = getFirestore(app);
+
+// Abilita la persistenza offline per lavorare anche senza campo in negozio
+try {
+  enableIndexedDbPersistence(dbFirestore).catch((err) => {
+    console.warn('Persistenza offline non attivata:', err.code);
+  });
+} catch (e) {
+  console.error(e);
+}

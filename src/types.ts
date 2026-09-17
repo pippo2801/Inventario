@@ -235,3 +235,41 @@ export interface VisualAnalysisResult {
   stimaIaDetails: string;
   usefulFramesCount?: number;
 }
+
+export interface CustomCategory {
+  id: string;
+  name: string;
+  description?: string;
+  eyeglassIds: string[];
+  visible: boolean;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+}
+
+export interface AppSettings {
+  menuCategories: {
+    occhiali: boolean;
+    pazienti: boolean;
+    prescrizioni: boolean;
+    vendite: boolean;
+    attivita: boolean;
+  };
+  home: {
+    showQuickActions: boolean;
+    showKpi: boolean;
+    showRecentActivity: boolean;
+    showStockAlerts: boolean;
+    watermarkIntensity: number;
+  };
+  appearance: {
+    theme: 'light' | 'dark';
+    style: 'ivory' | 'editorial';
+  };
+  notifications: {
+    enabled: boolean;
+  };
+  sync: {
+    enabled: boolean;
+  };
+}
