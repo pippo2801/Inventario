@@ -23,6 +23,17 @@ import { SettingsView } from './views/SettingsView';
 import { FlutterProjectExportModal } from './views/FlutterProjectExportModal';
 
 export function App() {
+  // Gestione tasto indietro Android
+  useEffect(() => {
+    const handleBackButton = (e: PopStateEvent) => {
+      // Evita la chiusura accidentale dell'app
+      window.history.pushState(null, '', window.location.href);
+    };
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('popstate', handleBackButton);
+    return () => window.removeEventListener('popstate', handleBackButton);
+  }, []);
+
   const [currentView, setCurrentView] = useState<string>('home');
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);

@@ -67,6 +67,23 @@ export const Header: React.FC<HeaderProps> = ({
           <Menu className="h-5 w-5 transition-transform group-hover:scale-105" />
         </button>
 
+        {/* LOGO / HOME */}
+        <button
+          id="btn-logo-home"
+          onClick={() => onNavigate('home')}
+          className="group mx-auto flex min-w-0 items-center gap-3 rounded-xl px-2 py-1.5 transition-all hover:bg-white sm:mx-auto"
+          aria-label="Torna alla Home - Studio Ottico Di Pietro"
+          title="Torna alla Home"
+        >
+          <img
+            src="/logo.png"
+            alt="Studio Ottico Di Pietro"
+            className="h-11 w-11 shrink-0 rounded-full object-contain transition-transform group-hover:scale-105"
+          />
+          <span className="hidden text-sm font-semibold tracking-[0.03em] text-[#514d48] md:block">
+            Studio Ottico Di Pietro
+          </span>
+        </button>
 
         {/* CONTROLLI — SOLO SYNC + NOTIFICHE */}
         <div className="flex shrink-0 items-center gap-1">

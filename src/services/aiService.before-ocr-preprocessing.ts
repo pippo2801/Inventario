@@ -1,4 +1,4 @@
-import { SanitaryCardOCR } from '../plugins/sanitaryCardOCR';
+import { createWorker } from 'tesseract.js';
 // Studio Ottico Di Pietro - AIService Abstraction
 // Respecting Principles 1, 45, 47, 78:
 // - Database is the ONLY source of truth. AI parses parameters, system queries DB.
@@ -326,7 +326,7 @@ class AIService {
   }
 
   // 4. OCR Codice Fiscale
-  public async ocrCodiceFiscale(imageBase64: string): Promise<{
+        public async ocrCodiceFiscale(imageBase64: string): Promise<{
     codiceFiscale: string;
     cognome: string;
     nome: string;
@@ -337,8 +337,10 @@ class AIService {
     rawText?: string;
   }> {
     try {
-      const ret = await SanitaryCardOCR.recognize({ image: imageBase64 });
-      const text = ret.text || '';
+      const worker = await createWorker('ita+eng');
+      const ret = await worker.recognize(imageBase64);
+      const text = ret.data.text || '';
+      await worker.terminate();
 
       const normalizedText = text.toUpperCase().replace(/[^A-Z0-9]/g, '');
       const cfRegex = /[A-Z]{6}[0-9L-V]{2}[A-Z][0-9L-V]{2}[A-Z][0-9L-V]{3}[A-Z]/;
@@ -349,28 +351,28 @@ class AIService {
       let dataNascita = '';
 
       if (codiceFiscale.length === 16) {
+        // Estrazione anno di nascita (caratteri 7-8)
         const yyStr = codiceFiscale.substring(6, 8);
         const yy = parseInt(yyStr, 10);
         const currentYearShort = new Date().getFullYear() % 100;
         const year = yy <= currentYearShort ? 2000 + yy : 1900 + yy;
 
+        // Estrazione mese (carattere 9)
         const monthMap: Record<string, string> = {
           'A': '01', 'B': '02', 'C': '03', 'D': '04', 'E': '05', 'H': '06',
           'L': '07', 'M': '08', 'P': '09', 'R': '10', 'S': '11', 'T': '12'
         };
-
         const mChar = codiceFiscale.charAt(8);
         const month = monthMap[mChar] || '01';
 
+        // Estrazione giorno e sesso (caratteri 10-11)
         let dVal = parseInt(codiceFiscale.substring(9, 11), 10);
-
         if (dVal > 40) {
           sesso = 'F';
           dVal -= 40;
         } else {
           sesso = 'M';
         }
-
         const day = dVal < 10 ? '0' + dVal : String(dVal);
         dataNascita = `${year}-${month}-${day}`;
       }
@@ -382,14 +384,11 @@ class AIService {
         dataNascita,
         comuneNascita: '',
         sesso,
-        confidence: codiceFiscale
-          ? 'Codice Fiscale estratto e decodificato'
-          : 'OCR eseguito: codice fiscale non rilevato',
+        confidence: codiceFiscale ? 'Codice Fiscale estratto e decodificato' : 'Nessun codice fiscale rilevato',
         rawText: text,
       };
     } catch (e) {
       console.error('Errore Tesseract OCR:', e);
-
       return {
         codiceFiscale: '',
         cognome: '',

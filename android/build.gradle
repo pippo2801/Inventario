@@ -27,3 +27,34 @@ allprojects {
 task clean(type: Delete) {
     delete rootProject.buildDir
 }
+
+subprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty("android")) {
+            project.android {
+                if (namespace == "com.capacitorjs.plugins.camera" || namespace == "com.capacitorjs.plugins.filesystem" || namespace == "com.capacitorjs.plugins.share" || namespace == "com.capacitorjs.plugins.toast") {
+                    // Ignora i requisiti stretti di toolchain se necessario
+                }
+            }
+        }
+    }
+}
+
+
+subprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty("android")) {
+            project.android {
+                compileSdkVersion 36
+                defaultConfig {
+                    minSdkVersion 24
+                    targetSdkVersion 36
+                }
+                compileOptions {
+                    sourceCompatibility JavaVersion.VERSION_21
+                    targetCompatibility JavaVersion.VERSION_21
+                }
+            }
+        }
+    }
+}

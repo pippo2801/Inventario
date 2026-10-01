@@ -1,4 +1,4 @@
-import { SanitaryCardOCR } from '../plugins/sanitaryCardOCR';
+import { createWorker } from 'tesseract.js';
 // Studio Ottico Di Pietro - AIService Abstraction
 // Respecting Principles 1, 45, 47, 78:
 // - Database is the ONLY source of truth. AI parses parameters, system queries DB.
@@ -337,8 +337,62 @@ class AIService {
     rawText?: string;
   }> {
     try {
-      const ret = await SanitaryCardOCR.recognize({ image: imageBase64 });
-      const text = ret.text || '';
+      // Preprocessing locale: ingrandimento + scala di grigi + contrasto.
+      // Non aggiunge dipendenze native e funziona anche nell'APK Capacitor.
+      const preprocessImage = (source: string): Promise<string> =>
+        new Promise((resolve) => {
+          const img = new Image();
+
+          img.onload = () => {
+            const maxWidth = 2200;
+            const scale = Math.min(1, maxWidth / img.width);
+            const width = Math.max(1, Math.round(img.width * scale));
+            const height = Math.max(1, Math.round(img.height * scale));
+
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+            if (!ctx) {
+              resolve(source);
+              return;
+            }
+
+            ctx.drawImage(img, 0, 0, width, height);
+
+            const imageData = ctx.getImageData(0, 0, width, height);
+            const data = imageData.data;
+
+            for (let i = 0; i < data.length; i += 4) {
+              const gray =
+                0.299 * data[i] +
+                0.587 * data[i + 1] +
+                0.114 * data[i + 2];
+
+              const contrast = ((gray - 128) * 1.45) + 128;
+              const value = Math.max(0, Math.min(255, contrast));
+
+              data[i] = value;
+              data[i + 1] = value;
+              data[i + 2] = value;
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+            resolve(canvas.toDataURL('image/png'));
+          };
+
+          img.onerror = () => resolve(source);
+          img.src = source;
+        });
+
+      const processedImage = await preprocessImage(imageBase64);
+
+      const worker = await createWorker('ita');
+      const ret = await worker.recognize(processedImage);
+      const text = ret.data.text || '';
+      await worker.terminate();
 
       const normalizedText = text.toUpperCase().replace(/[^A-Z0-9]/g, '');
       const cfRegex = /[A-Z]{6}[0-9L-V]{2}[A-Z][0-9L-V]{2}[A-Z][0-9L-V]{3}[A-Z]/;
