@@ -1,12 +1,13 @@
 import { defineConfig } from 'vite';
-import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
-  plugins: [tailwindcss()],
   build: {
-    chunkSizeWarningLimit: 1000,
+    // Alza il limite di warning per i chunk
+    chunkSizeWarningLimit: 1000, 
+    
     rollupOptions: {
       output: {
+        // Suddividi le librerie esterne in chunk separati
         manualChunks(id) {
           if (id.includes('node_modules')) {
             return 'vendor';

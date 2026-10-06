@@ -465,44 +465,6 @@ class DatabaseService {
     return sale;
   }
 
-  public restoreEyeglassFromSale(productId: string): Eyeglass | undefined {
-    const product = this.getEyeglassById(productId);
-
-    if (!product) {
-      throw new Error('Occhiale non trovato');
-    }
-
-    const oldStatus = product.status;
-
-    product.status = 'Disponibile';
-    product.isShowcase = false;
-    product.updatedAt = new Date().toISOString();
-    product.updatedBy = this.currentUser.name;
-    product.version += 1;
-
-    this.persist('eyeglasses', this.eyeglasses);
-
-    this.addAuditLog(
-      'Vendita',
-      product.id,
-      'RIPRISTINO_VENDITA',
-      `Occhiale ripristinato da Venduto a Disponibile: ${product.brand} ${product.model}.`,
-      `${oldStatus}`,
-      'Disponibile'
-    );
-
-    this.pushNotification(
-      `Occhiale ripristinato: ${product.brand} ${product.model}`,
-      `${this.currentUser.name} ha ripristinato ${product.brand} ${product.model} da Venduto a Disponibile.`,
-      'vendite',
-      'inventario',
-      product.id
-    );
-
-    this.notify();
-    return product;
-  }
-
   public getSales(includeDeleted = false): Sale[] {
     if (includeDeleted) return [...this.sales];
     return this.sales.filter((s) => s.deletedAt === null);

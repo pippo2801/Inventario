@@ -15,7 +15,6 @@ import {
   Layers,
   DollarSign,
   Clock,
-    RotateCcw,
 } from 'lucide-react';
 
 interface EyeglassDetailModalProps {
@@ -54,17 +53,6 @@ export const EyeglassDetailModal: React.FC<EyeglassDetailModalProps> = ({
   const handleDelete = () => {
     if (window.confirm(`Spostare "${eyeglass.brand} ${eyeglass.model}" nel Cestino?`)) {
       db.softDeleteEyeglass(eyeglass.id);
-      onClose();
-    }
-  };
-
-  const handleRestore = () => {
-    if (
-      window.confirm(
-        `Ripristinare "${eyeglass.brand} ${eyeglass.model}" tra gli occhiali disponibili?`
-      )
-    ) {
-      db.restoreEyeglassFromSale(eyeglass.id);
       onClose();
     }
   };
@@ -108,12 +96,12 @@ export const EyeglassDetailModal: React.FC<EyeglassDetailModalProps> = ({
               </button>
             )}
 
-              <button
-                onClick={onClose}
-                className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
+            <button
+              onClick={onClose}
+              className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
         </div>
 
@@ -353,35 +341,25 @@ export const EyeglassDetailModal: React.FC<EyeglassDetailModalProps> = ({
             <Trash2 className="w-4 h-4" /> Cestino
           </button>
 
-            <div className="flex items-center gap-2">
-              {eyeglass.status === 'Venduto' && (
-                <button
-                  onClick={handleRestore}
-                  className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shadow-lg flex items-center gap-1.5 transition-all active:scale-95"
-                >
-                  <RotateCcw className="w-4 h-4" /> Ripristina
-                </button>
-              )}
-
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold transition-colors"
+            >
+              Chiudi
+            </button>
+            {eyeglass.status === 'Disponibile' && (
               <button
-                onClick={onClose}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold transition-colors"
+                onClick={() => {
+                  onClose();
+                  onOpenFastSale(eyeglass);
+                }}
+                className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold shadow-lg flex items-center gap-1.5 transition-all active:scale-95"
               >
-                Chiudi
+                <ShoppingBag className="w-4 h-4" /> Avvia Vendita
               </button>
-
-              {eyeglass.status === 'Disponibile' && (
-                <button
-                  onClick={() => {
-                    onClose();
-                    onOpenFastSale(eyeglass);
-                  }}
-                  className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold shadow-lg flex items-center gap-1.5 transition-all active:scale-95"
-                >
-                  <ShoppingBag className="w-4 h-4" /> Avvia Vendita
-                </button>
-              )}
-            </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

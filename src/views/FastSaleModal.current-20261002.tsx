@@ -1,121 +1,82 @@
-import React, { useEffect, useState } from 'react';
-import { db } from '../services/db';
-import { Eyeglass, Client, PaymentMethod } from '../types';
-import {
-  ShoppingBag,
-  X,
-  User,
-  Search,
-  CheckCircle2,
-  AlertCircle,
-  CreditCard,
-  Banknote,
-  Building,
-  Tag,
-  MapPin,
-} from 'lucide-react';
+import React, { useState } from 'react';
+import { X, CheckCircle2, Search, MapPin, CreditCard, Banknote, Building, Tag, ShoppingBag } from 'lucide-react';
+import { Eyeglass, Client, PaymentMethod, User } from '../types';
 
 interface FastSaleModalProps {
-  isOpen: boolean;
+  eyeglasses: Eyeglass[];
+  clients: Client[];
+  currentUser: User;
   onClose: () => void;
-  preselectedEyeglass?: Eyeglass | null;
   onSaleSuccess: () => void;
+  db: {
+    createSale: (saleData: any) => Promise<any> | void;
+  };
 }
 
 export const FastSaleModal: React.FC<FastSaleModalProps> = ({
-  isOpen,
+  eyeglasses,
+  clients,
+  currentUser,
   onClose,
-  preselectedEyeglass,
   onSaleSuccess,
+  db,
 }) => {
-  const currentUser = db.getCurrentUser();
-  const eyeglasses = db.getEyeglasses(false).filter((e) => e.status === 'Disponibile');
-  const clients = db.getClients(false);
-
-  const [selectedEyeglass, setSelectedEyeglass] = useState<Eyeglass | null>(preselectedEyeglass || null);
+  const [selectedEyeglass, setSelectedEyeglass] = useState<Eyeglass | null>(null);
   const [eyeglassSearch, setEyeglassSearch] = useState('');
-
+  
   const [clientType, setClientType] = useState<'banco' | 'existing'>('banco');
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [clientSearch, setClientSearch] = useState('');
 
-  // Pricing
-  const [salePrice, setSalePrice] = useState<number>(
-    preselectedEyeglass
-      ? (preselectedEyeglass.isPromo && preselectedEyeglass.promoPrice ? preselectedEyeglass.promoPrice : preselectedEyeglass.salePrice)
-      : 0
-  );
+  const [salePrice, setSalePrice] = useState<number>(0);
   const [discountPercent, setDiscountPercent] = useState<number>(0);
-
-  // Payment
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('Carta');
   const [receiptReference, setReceiptReference] = useState('');
   const [notes, setNotes] = useState('');
-
-  // Confirmation modal step
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-
-  useEffect(() => {
-    setSelectedEyeglass(preselectedEyeglass || null);
-
-    if (preselectedEyeglass) {
-      const initialPrice =
-        preselectedEyeglass.isPromo && preselectedEyeglass.promoPrice
-          ? preselectedEyeglass.promoPrice
-          : preselectedEyeglass.salePrice;
-
-      setSalePrice(initialPrice);
-      setDiscountPercent(0);
-    } else {
-      setSalePrice(0);
-      setDiscountPercent(0);
-    }
-
-    setShowConfirmDialog(false);
-  }, [preselectedEyeglass]);
-
-  if (!isOpen) return null;
 
   const handleSelectEyeglass = (item: Eyeglass) => {
     setSelectedEyeglass(item);
-    const initialPrice = item.isPromo && item.promoPrice ? item.promoPrice : item.salePrice;
-    setSalePrice(initialPrice);
+    const price = item.isPromo && item.promoPrice ? item.promoPrice : item.salePrice;
+    setSalePrice(price);
     setDiscountPercent(0);
   };
 
-  const handleApplyDiscount = (percent: number) => {
+  const handleApplyDiscount = (perc: number) => {
     if (!selectedEyeglass) return;
-    const base = selectedEyeglass.isPromo && selectedEyeglass.promoPrice ? selectedEyeglass.promoPrice : selectedEyeglass.salePrice;
-    setDiscountPercent(percent);
-    setSalePrice(Math.round(base * (1 - percent / 100) * 100) / 100);
+    const basePrice = selectedEyeglass.isPromo && selectedEyeglass.promoPrice ? selectedEyeglass.promoPrice : selectedEyeglass.salePrice;
+    const discounted = basePrice * (1 - perc / 100);
+    setSalePrice(Math.round(discounted * 100) / 100);
+    setDiscountPercent(perc);
   };
 
-  const handleConfirmSale = () => {
+  const handleConfirmSale = async () => {
     if (!selectedEyeglass) return;
 
-    const effectiveListPrice =
-      selectedEyeglass.isPromo && selectedEyeglass.promoPrice
-        ? selectedEyeglass.promoPrice
-        : selectedEyeglass.salePrice;
+    try {
+      await db.createSale({
+        eyeglassId: selectedEyeglass.id,
+        eyeglassBrand: selectedEyeglass.brand,
+        eyeglassModel: selectedEyeglass.model,
+        clientId: clientType === 'existing' && selectedClient ? selectedClient.id : undefined,
+        clientName: clientType === 'existing' && selectedClient ? `${selectedClient.firstName} ${selectedClient.lastName}` : 'Cliente al Banco',
+        salePrice: salePrice,
+        purchasePrice: selectedEyeglass.purchasePrice,
+        discountApplied: discountPercent > 0 ? (selectedEyeglass.salePrice - salePrice) : undefined,
+        paymentMethod: paymentMethod,
+        operatorName: (currentUser?.name ?? 'Utente'),
+        deviceId: (currentUser?.deviceName ?? ''),
+        receiptReference: receiptReference.trim() || undefined,
+        notes: notes.trim() || undefined,
+      });
 
-    const discount = Math.max(0, effectiveListPrice - salePrice);
-
-    db.createSale({
-      productId: selectedEyeglass.id,
-      clientId: clientType === 'existing' && selectedClient ? selectedClient.id : undefined,
-      clientName:
-        clientType === 'existing' && selectedClient
-          ? `${selectedClient.firstName} ${selectedClient.lastName}`
-          : 'Cliente al Banco',
-      discount,
-      paymentMethod,
-      receiptReference: receiptReference.trim(),
-      notes: notes.trim() || undefined,
-    });
-
-    setShowConfirmDialog(false);
-    onSaleSuccess();
-    onClose();
+      setShowConfirmDialog(false);
+      if (onSaleSuccess) onSaleSuccess();
+      if (onClose) onClose();
+    } catch (error) {
+      console.error("Errore durante la conferma della vendita:", error);
+      alert("Si è verificato un errore durante il salvataggio della vendita.");
+    }
   };
 
   return (
@@ -135,7 +96,7 @@ export const FastSaleModal: React.FC<FastSaleModalProps> = ({
                 Nuova Vendita Rapida
               </h2>
               <p className="text-xs text-teal-300/80">
-                Operatore: <b>{currentUser.name}</b> ({currentUser.deviceName})
+                Operatore: <b>{(currentUser?.name ?? 'Utente')}</b> ({(currentUser?.deviceName ?? '')})
               </p>
             </div>
           </div>
@@ -419,7 +380,7 @@ export const FastSaleModal: React.FC<FastSaleModalProps> = ({
           </button>
         </div>
 
-        {/* Confirmation Dialog (Section 31: CONFERMA OPERAZIONE CRITICA) */}
+        {/* Confirmation Dialog */}
         {showConfirmDialog && selectedEyeglass && (
           <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="w-full max-w-md bg-slate-900 border border-emerald-600/60 rounded-2xl p-5 shadow-2xl space-y-4">
@@ -433,11 +394,11 @@ export const FastSaleModal: React.FC<FastSaleModalProps> = ({
                 <p><b>Importo Incassato:</b> <span className="text-emerald-400 font-bold">€{salePrice.toFixed(2)}</span></p>
                 <p><b>Pagamento:</b> {paymentMethod}</p>
                 <p><b>Intestatario:</b> {clientType === 'existing' && selectedClient ? `${selectedClient.firstName} ${selectedClient.lastName}` : 'Cliente al Banco'}</p>
-                <p><b>Operatore & Terminale:</b> {currentUser.name} ({currentUser.deviceName})</p>
+                <p><b>Operatore & Terminale:</b> {(currentUser?.name ?? 'Utente')} ({(currentUser?.deviceName ?? '')})</p>
               </div>
 
               <p className="text-[11px] text-slate-400">
-                L'occhiale verrà marcato come <b>Venduto</b> e la vendita sarà salvata nello storico e nelle statistiche dello studio.
+                L'occhiale verrà marcato come <b>Venduto</b> e la vendita sarà immediatamente sincronizzata su tutti gli smartphone dello studio.
               </p>
 
               <div className="flex justify-end gap-2 pt-2">
@@ -452,7 +413,7 @@ export const FastSaleModal: React.FC<FastSaleModalProps> = ({
                   onClick={handleConfirmSale}
                   className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg"
                 >
-                  Conferma
+                  Conferma e Sincronizza
                 </button>
               </div>
             </div>

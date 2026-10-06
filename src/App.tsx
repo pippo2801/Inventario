@@ -61,9 +61,41 @@ export function App() {
       setIsFlutterExportOpen(true);
       return;
     }
+
+    // Le notifiche possono puntare direttamente a un cliente.
     if (view === 'clients' && id) {
       setTargetClientId(id);
     }
+
+    // "venduti" è il nome usato dalle notifiche, mentre la schermata
+    // dello storico vendite è "sales".
+    if (view === 'venduti') {
+      const sale = id ? db.getSales(false).find((item) => item.id === id) : undefined;
+
+      if (sale) {
+        const product = db.getEyeglassById(sale.productId);
+
+        if (product) {
+          setSelectedEyeglass(product);
+        }
+      }
+
+      setCurrentView('sales');
+      return;
+    }
+
+    // Le notifiche di inventario possono puntare direttamente all'occhiale.
+    if (view === 'inventario' && id) {
+      const product = db.getEyeglassById(id);
+
+      if (product) {
+        setSelectedEyeglass(product);
+      }
+
+      setCurrentView('inventory');
+      return;
+    }
+
     setCurrentView(view);
   };
 
@@ -137,7 +169,7 @@ export function App() {
           />
         )}
 
-        {currentView === 'sales' && <SalesHistoryView />}
+        {currentView === 'sales' && <SalesHistoryView onSelectEyeglass={(item) => setSelectedEyeglass(item)} />}
 
         {currentView === 'clients' && (
           <ClientsView

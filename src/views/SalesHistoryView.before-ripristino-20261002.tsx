@@ -1,13 +1,8 @@
 import React from 'react';
 import { db } from '../services/db';
-import { Eyeglass } from '../types';
 import { History, Smartphone, CreditCard, Banknote, Building, Tag, ArrowUpRight } from 'lucide-react';
 
-interface SalesHistoryViewProps {
-  onSelectEyeglass: (eyeglass: Eyeglass) => void;
-}
-
-export const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onSelectEyeglass }) => {
+export const SalesHistoryView: React.FC = () => {
   const sales = db.getSales(false);
 
   const totalRevenue = sales.reduce((acc, s) => acc + (s.finalPrice ?? s.salePrice ?? 0), 0);
@@ -50,15 +45,11 @@ export const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({ onSelectEyeg
         ) : (
           <div className="divide-y divide-slate-800">
             {sales.map((sale) => {
-              const product = db.getEyeglassById(sale.productId);
               const effectivePrice = sale.finalPrice ?? sale.salePrice ?? 0;
               const margin = sale.estimatedGrossMargin ?? (effectivePrice - sale.productPurchasePrice);
 
               return (
-                <div key={sale.id} onClick={() => product && onSelectEyeglass(product)}
-                    className={`p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs hover:bg-teal-950/20 transition-colors ${
-                      product ? 'cursor-pointer' : ''
-                    }`}>
+                <div key={sale.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs hover:bg-teal-950/20 transition-colors">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-white uppercase text-sm">

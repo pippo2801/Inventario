@@ -127,7 +127,7 @@ export const Header: React.FC<HeaderProps> = ({
                   aria-label="Chiudi notifiche"
                 />
 
-                <div className="absolute right-0 sm:right-0 z-50 mt-2 w-[280px] sm:w-[320px] max-w-[90vw] overflow-hidden rounded-2xl border border-[#d9d2c8] bg-[#fbf9f5] shadow-[0_18px_50px_rgba(42,38,34,0.16)] translate-x-2 sm:translate-x-0">
+                <div className="fixed right-3 top-[76px] z-[60] w-[calc(100vw-24px)] max-w-[320px] overflow-hidden rounded-2xl border border-[#d9d2c8] bg-[#fbf9f5] shadow-[0_18px_50px_rgba(42,38,34,0.16)]">
                   <div className="flex items-center justify-between border-b border-[#e5dfd6] px-4 py-3">
                     <div>
                       <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-[#8b5360]">
