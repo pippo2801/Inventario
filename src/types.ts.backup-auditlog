@@ -164,7 +164,7 @@ export interface AuditLog {
   device?: string;
   entityType: 'Prodotto' | 'Cliente' | 'Prescrizione' | 'Vendita' | 'Vetrina' | 'Promo' | 'Backup' | 'Sistema';
   entityId: string;
-  operation: 'CREAZIONE' | 'MODIFICA' | 'VENDITA' | 'ELIMINAZIONE' | 'RIPRISTINO' | 'RIPRISTINO_VENDITA' | 'SPOSTAMENTO_VETRINA' | 'PROMO_ATTIVATA' | 'PROMO_DISATTIVATA';
+  operation: 'CREAZIONE' | 'MODIFICA' | 'VENDITA' | 'ELIMINAZIONE' | 'RIPRISTINO' | 'SPOSTAMENTO_VETRINA' | 'PROMO_ATTIVATA' | 'PROMO_DISATTIVATA';
   details: string;
   oldValue?: string;
   newValue?: string;

@@ -397,7 +397,7 @@ class AIService {
         dataNascita: '',
         comuneNascita: '',
         sesso: '',
-        confidence: `Errore di lettura: ${e instanceof Error ? e.message : String(e)}`,
+        confidence: 'Errore di lettura',
       };
     }
   }

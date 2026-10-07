@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "948603878645",
+    "project_id": "inventario-studio",
+    "storage_bucket": "inventario-studio.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:948603878645:android:952ed7b1d1c28afd8659bc",
+        "android_client_info": {
+          "package_name": "com.example.react_example"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBuM1NOUhP748brdBV9HfRoNcq5I8yFaaI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
