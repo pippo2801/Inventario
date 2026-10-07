@@ -33,7 +33,7 @@ Sistema gestionale e di intelligenza artificiale multimodale sviluppato per lo *
 - Scarico immediato dallo stock e dalla vetrina.
 
 ### 6. 📱 Sincronizzazione Multi-Terminale & Resilienza Offline
-- Architettura a stato reattivo sincronizzato tra terminali (es. Postazione Filippo e Postazione Mariangela).
+- Architettura a stato reattivo sincronizzato tra terminali (es. Postazione Filippo e Postazione Angela).
 - Risoluzione automatica dei conflitti basata su timestamp (*last-write-wins*).
 - Audit trail inalterabile per tracciamento delle modifiche e cestino con eliminazione protetta e ripristino.
 
