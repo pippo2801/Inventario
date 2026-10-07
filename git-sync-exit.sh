@@ -4,6 +4,18 @@ cd "$HOME/inventario" || exit 0
 
 echo
 echo "========================================"
+echo "   BACKUP PRIMA DELLA SINCRONIZZAZIONE"
+echo "========================================"
+
+if ! ./backup-versione.sh; then
+    echo
+    echo "ERRORE: backup non riuscito."
+    echo "Sincronizzazione annullata per sicurezza."
+    exit 1
+fi
+
+echo
+echo "========================================"
 echo "   SINCRONIZZAZIONE INVENTARIO"
 echo "========================================"
 
