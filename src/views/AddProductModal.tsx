@@ -135,7 +135,8 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
           shapeText.includes('cat-eye') || shapeText.includes('cateye') || shapeText.includes('occhio di gatto') ? 'Cat-eye' :
           shapeText.includes('pantograf') ? 'Pantografo' :
           shapeText.includes('browline') ? 'Browline' :
-          shapeText.includes('oval') ? 'Ovale' : undefined;
+          shapeText.includes('oval') ? 'Ovale' :
+          shapeText.includes('mascherin') || shapeText.includes('shield') ? 'Mascherina' : undefined;
         if (supportedShape) {
           setShape(supportedShape);
           applied = true;
@@ -424,6 +425,9 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                 <option value="Cat-eye">Cat-eye</option>
                 <option value="Pantografo">Pantografo</option>
                 <option value="Browline">Browline</option>
+                <option value="Ovale">Ovale</option>
+                <option value="Mascherina">Mascherina / Shield</option>
+                <option value="Altro">Altro</option>
               </select>
             </div>
 
@@ -440,6 +444,8 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                 <option value="Titanio">Titanio</option>
                 <option value="Misto">Misto</option>
                 <option value="A giorno">A giorno (Rimless)</option>
+                <option value="Legno">Legno</option>
+                <option value="Altro">Altro</option>
               </select>
             </div>
           </div>
