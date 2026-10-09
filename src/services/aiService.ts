@@ -53,8 +53,8 @@ function fiscalCodeChecksumIsValid(code: string): boolean {
 }
 
 export function isValidItalianFiscalCode(value: string): boolean {
-  const code = value.toUpperCase().replace(/\\s/g, '');
-  return /^[A-Z]{6}\\d{2}[A-Z]\\d{2}[A-Z]\\d{3}[A-Z]$/.test(code) && fiscalCodeChecksumIsValid(code);
+  const code = value.toUpperCase().replace(/\s/g, '');
+  return /^[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]$/.test(code) && fiscalCodeChecksumIsValid(code);
 }
 
 function extractFiscalCode(text: string): { code: string; checksumValid: boolean } | null {
@@ -404,10 +404,10 @@ class AIService {
       // Read names only from explicitly labelled OCR lines. Never guess or autocorrect
       // a person's name: OCR mistakes must remain visible for operator verification.
       const extractLabelledField = (labels: string[]): string => {
-        for (const line of text.split(/\\r?\\n/)) {
-          const match = line.match(/^\\s*(?:NOME|COGNOME|SURNAME|GIVEN NAME|NAME)\\s*[:：-]?\\s*(.*?)\\s*$/i);
+        for (const line of text.split(/\r?\n/)) {
+          const match = line.match(/^\s*(?:NOME|COGNOME|SURNAME|GIVEN NAME|NAME)\s*[:：-]?\s*(.*?)\s*$/i);
           if (match && labels.some((label) => new RegExp(label, 'i').test(line.slice(0, line.indexOf(match[1]))))) {
-            const value = match[1].replace(/[^\\p{L} '\\-]/gu, '').trim();
+            const value = match[1].replace(/[^\p{L} '\-]/gu, '').trim();
             if (value && value.length >= 2) return value;
           }
         }
