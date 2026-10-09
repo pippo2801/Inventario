@@ -102,13 +102,13 @@ app.post('/api/ai/visual-search', async (req, res) => {
     const ai = getGeminiClient();
     if (!ai) {
       return res.json({
-        shape: 'Aviator / Goccia',
-        color: 'Nero / Metallo',
-        frameType: 'Cerchiato Metallo',
+        shape: '',
+        color: '',
+        frameType: '',
         detectedBrand: null,
         detectedModelOrCode: null,
         confidence: 'Bassa',
-        stimaIaDetails: 'Analisi locale (Modalità Offline/Chiave API non configurata). Stima visiva orientativa.',
+        stimaIaDetails: 'Analisi IA non disponibile: GEMINI_API_KEY non configurata. Nessuna categoria è stata indovinata; compilare manualmente.',
       });
     }
 
@@ -175,14 +175,14 @@ app.post('/api/ai/video-search', async (req, res) => {
     const ai = getGeminiClient();
     if (!ai) {
       return res.json({
-        shape: 'Rettangolare',
-        color: 'Tartarugato',
-        frameType: 'Acetato',
+        shape: '',
+        color: '',
+        frameType: '',
         detectedBrand: null,
         detectedModelOrCode: null,
-        confidence: 'Media',
-        stimaIaDetails: 'Analisi da video: rilevata forma frontale e finitura tartarugata.',
-        usefulFramesCount: Math.min(3, frames.length),
+        confidence: 'Bassa',
+        stimaIaDetails: 'Analisi video non disponibile: GEMINI_API_KEY non configurata. Nessuna categoria è stata indovinata; inserire i dati manualmente.',
+        usefulFramesCount: 0,
       });
     }
 
@@ -250,13 +250,13 @@ app.post('/api/ai/ocr-codice-fiscale', async (req, res) => {
     const ai = getGeminiClient();
     if (!ai) {
       return res.json({
-        codiceFiscale: 'RSSMRA80A01H501U',
-        cognome: 'ROSSI',
-        nome: 'MARIO',
-        dataNascita: '1980-01-01',
-        comuneNascita: 'ROMA',
-        sesso: 'M',
-        confidence: 'Simulazione Offline',
+        codiceFiscale: '',
+        cognome: '',
+        nome: '',
+        dataNascita: '',
+        comuneNascita: '',
+        sesso: '',
+        confidence: 'OCR non eseguito: GEMINI_API_KEY non configurata. Nessun dato personale è stato simulato; acquisire la tessera con OCR locale o inserire i dati manualmente.',
       });
     }
 
@@ -322,14 +322,14 @@ app.post('/api/ai/ocr-prescription', async (req, res) => {
     const ai = getGeminiClient();
     if (!ai) {
       return res.json({
-        doctorOrOptometrist: 'Dott. Oculista (Rilevato)',
-        date: new Date().toISOString().slice(0, 10),
-        od: { sph: -2.25, cyl: -0.50, ax: 90, add: 0.0 },
-        os: { sph: -2.00, cyl: -0.75, ax: 85, add: 0.0 },
-        pd: { od: 31.5, os: 31.5, total: 63.0 },
-        mountingHeight: 21.0,
-        notes: 'Dati rilevati da ricetta. Verificare prima di confermare.',
-        confidence: 'Simulazione Offline',
+        doctorOrOptometrist: '',
+        date: '',
+        od: { sph: 0, cyl: 0, ax: 0, add: 0 },
+        os: { sph: 0, cyl: 0, ax: 0, add: 0 },
+        pd: { od: 0, os: 0, total: 0 },
+        mountingHeight: 0,
+        notes: 'OCR non disponibile: GEMINI_API_KEY non configurata. Nessun dato è stato inventato; inserire i valori manualmente e verificarli prima di salvare.',
+        confidence: 'OCR non eseguito: configurazione IA assente; inserimento manuale richiesto',
       });
     }
 

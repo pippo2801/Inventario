@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { db } from '../services/db';
 import { aiService } from '../services/aiService';
 import { Eyeglass, Gender, FrameShape, FrameMaterial } from '../types';
@@ -21,25 +21,49 @@ interface AddProductModalProps {
   onAdded: (eyeglass: Eyeglass) => void;
 }
 
+// Reduce camera images before putting them in local app storage.
+const optimizeProductPhoto = (source: string): Promise<string> =>
+  new Promise((resolve) => {
+    const image = new Image();
+    image.onload = () => {
+      const maxDimension = 900;
+      const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth, image.naturalHeight));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+      const context = canvas.getContext('2d');
+      if (!context) {
+        resolve(source);
+        return;
+      }
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      try {
+        resolve(canvas.toDataURL('image/jpeg', 0.72));
+      } catch {
+        resolve(source);
+      }
+    };
+    image.onerror = () => resolve(source);
+    image.src = source;
+  });
+
 export const AddProductModal: React.FC<AddProductModalProps> = ({
   isOpen,
   onClose,
   onAdded,
 }) => {
-  const [photoUrl, setPhotoUrl] = useState<string>(
-    'https://images.unsplash.com/photo-1511499767150-a48a237f0083?w=600&auto=format&fit=crop&q=80'
-  );
+  const [photoUrl, setPhotoUrl] = useState<string>('');
   const [brand, setBrand] = useState('');
   const [model, setModel] = useState('');
   const [color, setColor] = useState('');
-  const [gender, setGender] = useState<Gender>('Unisex');
-  const [purchasePrice, setPurchasePrice] = useState<number>(65);
-  const [salePrice, setSalePrice] = useState<number>(149);
-  const [location, setLocation] = useState('Espositore Centrale - Ripiano A');
-  const [sku, setSku] = useState(`OPT-${Math.floor(1000 + Math.random() * 9000)}`);
+  const [gender, setGender] = useState<Gender | ''>('');
+  const [purchasePrice, setPurchasePrice] = useState<number>(0);
+  const [salePrice, setSalePrice] = useState<number>(0);
+  const [location, setLocation] = useState('');
+  const [sku, setSku] = useState(`OPT-${Date.now().toString().slice(-8)}`);
   const [supplierCode, setSupplierCode] = useState('');
-  const [shape, setShape] = useState<FrameShape>('Rettangolare');
-  const [material, setMaterial] = useState<FrameMaterial>('Acetato');
+  const [shape, setShape] = useState<FrameShape | ''>('');
+  const [material, setMaterial] = useState<FrameMaterial | ''>('');
   const [isShowcase, setIsShowcase] = useState(false);
   const [isPromo, setIsPromo] = useState(false);
   const [promoPrice, setPromoPrice] = useState<number | undefined>(undefined);
@@ -48,8 +72,33 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
   // AI assistant state
   const [aiAnalyzing, setAiAnalyzing] = useState(false);
   const [aiSuggestionsReceived, setAiSuggestionsReceived] = useState(false);
+  const [aiMessage, setAiMessage] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    // A new opening must always start with a clean form, never the previous product.
+    setPhotoUrl('');
+    setBrand('');
+    setModel('');
+    setColor('');
+    setGender('');
+    setPurchasePrice(0);
+    setSalePrice(0);
+    setLocation('');
+    setSku(`OPT-${Date.now().toString().slice(-8)}`);
+    setSupplierCode('');
+    setShape('');
+    setMaterial('');
+    setIsShowcase(false);
+    setIsPromo(false);
+    setPromoPrice(undefined);
+    setNotes('');
+    setAiAnalyzing(false);
+    setAiSuggestionsReceived(false);
+    setAiMessage('');
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -59,22 +108,66 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
 
     const reader = new FileReader();
     reader.onload = async () => {
-      const base64 = reader.result as string;
+      const original = reader.result as string;
+      const base64 = await optimizeProductPhoto(original);
       setPhotoUrl(base64);
+      setAiSuggestionsReceived(false);
+      setAiMessage('');
 
-      // Trigger AI Assistant for suggestions (Section 26)
+      // AI suggestions are optional: never substitute guessed categories when analysis is unavailable.
       setAiAnalyzing(true);
       try {
         const result = await aiService.visualSearchEyeglass(base64);
-        if (result.analysis) {
-          if (result.analysis.detectedBrand) setBrand(result.analysis.detectedBrand);
-          if (result.analysis.shape) setShape(result.analysis.shape as FrameShape);
-          if (result.analysis.color) setColor(result.analysis.color);
-          if (result.analysis.frameType) setMaterial(result.analysis.frameType as FrameMaterial);
+        const analysis = result.analysis;
+        let applied = false;
+        if (analysis?.detectedBrand?.trim()) {
+          setBrand(analysis.detectedBrand.trim());
+          applied = true;
+        }
+
+        // Convert free-form AI descriptions into only the categories supported by the form.
+        const shapeText = analysis?.shape?.toLocaleLowerCase('it') || '';
+        const supportedShape: FrameShape | undefined =
+          shapeText.includes('aviator') || shapeText.includes('goccia') ? 'Aviator' :
+          shapeText.includes('rettang') ? 'Rettangolare' :
+          shapeText.includes('rotond') || shapeText.includes('tond') ? 'Rotondo' :
+          shapeText.includes('squadr') ? 'Squadrato' :
+          shapeText.includes('cat-eye') || shapeText.includes('cateye') || shapeText.includes('occhio di gatto') ? 'Cat-eye' :
+          shapeText.includes('pantograf') ? 'Pantografo' :
+          shapeText.includes('browline') ? 'Browline' :
+          shapeText.includes('oval') ? 'Ovale' :
+          shapeText.includes('mascherin') || shapeText.includes('shield') ? 'Mascherina' : undefined;
+        if (supportedShape) {
+          setShape(supportedShape);
+          applied = true;
+        }
+
+        if (analysis?.color?.trim()) {
+          setColor(analysis.color.trim());
+          applied = true;
+        }
+
+        const materialText = analysis?.frameType?.toLocaleLowerCase('it') || '';
+        const supportedMaterial: FrameMaterial | undefined =
+          materialText.includes('titanio') ? 'Titanio' :
+          materialText.includes('acetato') ? 'Acetato' :
+          materialText.includes('legno') ? 'Legno' :
+          materialText.includes('rimless') || materialText.includes('a giorno') || materialText.includes('senza montatura') ? 'A giorno' :
+          materialText.includes('misto') || materialText.includes('nylor') ? 'Misto' :
+          materialText.includes('metallo') || materialText.includes('metal') ? 'Metallo' : undefined;
+        if (supportedMaterial) {
+          setMaterial(supportedMaterial);
+          applied = true;
+        }
+        if (applied) {
           setAiSuggestionsReceived(true);
+          setAiMessage('Controlla e correggi le categorie suggerite prima di salvare.');
+        } else {
+          setAiMessage('Analisi automatica non disponibile: la foto è stata conservata. Inserisci o scegli manualmente le categorie.');
         }
       } catch (err) {
         console.error(err);
+        setAiMessage('Analisi automatica non riuscita: la foto è stata conservata. Inserisci o scegli manualmente le categorie.');
       } finally {
         setAiAnalyzing(false);
       }
@@ -84,12 +177,30 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
 
   const handleSave = () => {
     if (!brand.trim() || !model.trim() || !location.trim()) {
-      alert('I campi Marca, Modello e Posizione Fisica sono obbligatori.');
+      alert('Marca, Modello e Posizione Fisica sono obbligatori.');
+      return;
+    }
+    if (!gender || !shape || !material) {
+      alert('Seleziona Genere, Forma della montatura e Materiale prima di salvare.');
+      return;
+    }
+    if (!Number.isFinite(purchasePrice) || purchasePrice <= 0 || !Number.isFinite(salePrice) || salePrice <= 0) {
+      alert('Inserisci un costo di acquisto e un prezzo di vendita validi, maggiori di zero.');
+      return;
+    }
+    if (isPromo && (!Number.isFinite(promoPrice ?? salePrice * 0.8) || (promoPrice ?? salePrice * 0.8) <= 0 || (promoPrice ?? salePrice * 0.8) > salePrice)) {
+      alert('Il prezzo promozionale deve essere maggiore di zero e non superiore al prezzo di vendita.');
+      return;
+    }
+
+    const normalizedSku = sku.trim().toUpperCase();
+    if (normalizedSku && db.getEyeglasses(true).some((item) => item.sku.trim().toUpperCase() === normalizedSku)) {
+      alert('Questo SKU è già assegnato a un articolo. Generane uno nuovo o inserisci un codice diverso.');
       return;
     }
 
     const newEyeglass = db.createEyeglass({
-      sku: sku.trim() || `SKU-${Date.now()}`,
+      sku: normalizedSku || `SKU-${Date.now()}`,
       supplierCode: supplierCode.trim() || undefined,
       brand: brand.trim(),
       model: model.trim(),
@@ -148,16 +259,23 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
           {/* Section 26 & 27: Photo & AI Assistant Banner */}
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative w-full sm:w-48 aspect-video sm:aspect-square rounded-xl overflow-hidden bg-slate-950 border border-teal-800/60 flex-shrink-0 flex items-center justify-center group">
-              <img
-                src={photoUrl}
-                alt="Anteprima"
-                className="w-full h-full object-cover"
-                referrerPolicy="no-referrer"
-              />
+              {photoUrl ? (
+                <img
+                  src={photoUrl}
+                  alt="Anteprima della foto dell'occhiale"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center gap-2 p-4 text-center text-slate-400">
+                  <Camera className="w-8 h-8 text-teal-400" />
+                  <span className="text-[11px]">Nessuna foto selezionata</span>
+                </div>
+              )}
               <input
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
+                capture="environment"
                 className="hidden"
                 onChange={handlePhotoUpload}
               />
@@ -189,7 +307,12 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                 {aiSuggestionsReceived && (
                   <div className="mt-2 text-[10px] text-emerald-300 bg-emerald-950/60 p-1.5 rounded border border-emerald-800 flex items-center gap-1">
                     <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Campi precompilati dall'analisi visiva. Puoi modificarli liberamente.</span>
+                    <span>Campi suggeriti dall'analisi visiva. Verificali: la classificazione può essere imprecisa.</span>
+                  </div>
+                )}
+                {!!aiMessage && (
+                  <div className="mt-2 text-[10px] text-amber-200 bg-amber-950/40 p-1.5 rounded border border-amber-800/70">
+                    {aiMessage}
                   </div>
                 )}
               </div>
@@ -207,7 +330,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                 </div>
                 <button
                   type="button"
-                  onClick={() => setSku(`OPT-${Math.floor(1000 + Math.random() * 9000)}`)}
+                  onClick={() => setSku(`OPT-${Date.now().toString().slice(-8)}`)}
                   className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs flex items-center gap-1"
                 >
                   <Barcode className="w-3.5 h-3.5" /> Genera SKU
@@ -277,9 +400,10 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
               <label className="text-[11px] font-semibold text-slate-300 block mb-1">Genere</label>
               <select
                 value={gender}
-                onChange={(e) => setGender(e.target.value as Gender)}
+                onChange={(e) => setGender(e.target.value as Gender | '')}
                 className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-teal-700/50 text-white focus:outline-none"
               >
+                <option value="">Seleziona genere…</option>
                 <option value="Unisex">Unisex</option>
                 <option value="Uomo">Uomo</option>
                 <option value="Donna">Donna</option>
@@ -290,9 +414,10 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
               <label className="text-[11px] font-semibold text-slate-300 block mb-1">Forma Montatura</label>
               <select
                 value={shape}
-                onChange={(e) => setShape(e.target.value as FrameShape)}
+                onChange={(e) => setShape(e.target.value as FrameShape | '')}
                 className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-teal-700/50 text-white focus:outline-none"
               >
+                <option value="">Seleziona forma…</option>
                 <option value="Aviator">Aviator / Goccia</option>
                 <option value="Rettangolare">Rettangolare</option>
                 <option value="Rotondo">Rotondo</option>
@@ -300,6 +425,9 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                 <option value="Cat-eye">Cat-eye</option>
                 <option value="Pantografo">Pantografo</option>
                 <option value="Browline">Browline</option>
+                <option value="Ovale">Ovale</option>
+                <option value="Mascherina">Mascherina / Shield</option>
+                <option value="Altro">Altro</option>
               </select>
             </div>
 
@@ -307,14 +435,17 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
               <label className="text-[11px] font-semibold text-slate-300 block mb-1">Materiale</label>
               <select
                 value={material}
-                onChange={(e) => setMaterial(e.target.value as FrameMaterial)}
+                onChange={(e) => setMaterial(e.target.value as FrameMaterial | '')}
                 className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-teal-700/50 text-white focus:outline-none"
               >
+                <option value="">Seleziona materiale…</option>
                 <option value="Metallo">Metallo</option>
                 <option value="Acetato">Acetato</option>
                 <option value="Titanio">Titanio</option>
                 <option value="Misto">Misto</option>
                 <option value="A giorno">A giorno (Rimless)</option>
+                <option value="Legno">Legno</option>
+                <option value="Altro">Altro</option>
               </select>
             </div>
           </div>

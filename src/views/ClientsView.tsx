@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { db } from '../services/db';
-import { aiService } from '../services/aiService';
+import { aiService, isValidItalianFiscalCode } from '../services/aiService';
 import { Camera as CapacitorCamera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { Client, Prescription, Sale } from '../types';
 import {
@@ -80,10 +80,24 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
       return;
     }
 
+    const normalizedFiscalCode = fiscalCode.trim().toUpperCase().replace(/\s/g, '');
+    const duplicate = clients.find((client) => client.fiscalCode.toUpperCase().replace(/\s/g, '') === normalizedFiscalCode);
+    if (duplicate) {
+      alert(`Esiste già un cliente con questo codice fiscale: ${duplicate.firstName} ${duplicate.lastName}. Controllare l'anagrafica prima di procedere.`);
+      return;
+    }
+
+    if (!isValidItalianFiscalCode(normalizedFiscalCode)) {
+      const proceed = window.confirm(
+        'Il codice fiscale non supera il controllo formale. Potrebbe esserci un errore OCR o di digitazione. Premi OK per salvare comunque dopo averlo verificato sulla tessera, oppure Annulla per correggerlo.'
+      );
+      if (!proceed) return;
+    }
+
     const newClient = db.createClient({
       firstName: firstName.trim(),
       lastName: lastName.trim(),
-      fiscalCode: fiscalCode.trim().toUpperCase(),
+      fiscalCode: normalizedFiscalCode,
       birthDate: birthDate || undefined,
       phone: phone.trim() || undefined,
       email: email.trim() || undefined,
@@ -127,7 +141,9 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   const handleCfCameraCapture = async () => {
     try {
       const photo = await CapacitorCamera.getPhoto({
-        quality: 90,
+        quality: 70,
+        width: 1280,
+        height: 1280,
         allowEditing: false,
         resultType: CameraResultType.DataUrl,
         source: CameraSource.Camera,
@@ -384,7 +400,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
             </div>
 
             <p className="text-xs text-slate-300">
-              Carica la foto della tessera sanitaria del cliente. L'IA estrarrà Codice Fiscale, Cognome, Nome e Data di nascita.
+              La lettura automatica può confondere lettere e nomi (per esempio I/L o una lettera mancante). Controlla sempre il testo OCR e confronta nome, cognome e codice fiscale con la tessera prima di salvare.
             </p>
 
             <input
@@ -428,7 +444,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
               <div className="p-3.5 rounded-xl bg-teal-950/60 border border-teal-700 text-xs space-y-2">
                 <div className="flex items-center justify-between text-teal-300 font-bold">
                   <span>Dati Rilevati dall'OCR (Verifica e Correggi):</span>
-                  <span className="text-[10px] text-emerald-400">{ocrResult.confidence}</span>
+                  <span className={`text-[10px] ${ocrResult.confidence.includes('non superato') || ocrResult.confidence.includes('non rilevato') ? 'text-amber-300' : 'text-emerald-300'}`}>{ocrResult.confidence}</span>
               {ocrResult.rawText && (
                 <div className="mt-2 p-2 rounded bg-black/40 border border-amber-700/60">
                   <div className="text-[10px] text-amber-300 font-bold mb-1">TESTO OCR LETTO:</div>

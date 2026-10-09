@@ -54,6 +54,7 @@ export const FastSaleModal: React.FC<FastSaleModalProps> = ({
 
   // Confirmation modal step
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [saleError, setSaleError] = useState('');
 
   useEffect(() => {
     setSelectedEyeglass(preselectedEyeglass || null);
@@ -72,11 +73,13 @@ export const FastSaleModal: React.FC<FastSaleModalProps> = ({
     }
 
     setShowConfirmDialog(false);
+    setSaleError('');
   }, [preselectedEyeglass]);
 
   if (!isOpen) return null;
 
   const handleSelectEyeglass = (item: Eyeglass) => {
+    setSaleError('');
     setSelectedEyeglass(item);
     const initialPrice = item.isPromo && item.promoPrice ? item.promoPrice : item.salePrice;
     setSalePrice(initialPrice);
@@ -98,24 +101,33 @@ export const FastSaleModal: React.FC<FastSaleModalProps> = ({
         ? selectedEyeglass.promoPrice
         : selectedEyeglass.salePrice;
 
-    const discount = Math.max(0, effectiveListPrice - salePrice);
+    if (!Number.isFinite(salePrice) || salePrice < 0 || salePrice > effectiveListPrice) {
+      setSaleError('Il prezzo finale deve essere compreso tra €0 e il prezzo di listino. Correggere l’importo prima di confermare.');
+      return;
+    }
+    const discount = Math.round((effectiveListPrice - salePrice) * 100) / 100;
 
-    db.createSale({
-      productId: selectedEyeglass.id,
-      clientId: clientType === 'existing' && selectedClient ? selectedClient.id : undefined,
-      clientName:
-        clientType === 'existing' && selectedClient
-          ? `${selectedClient.firstName} ${selectedClient.lastName}`
-          : 'Cliente al Banco',
-      discount,
-      paymentMethod,
-      receiptReference: receiptReference.trim(),
-      notes: notes.trim() || undefined,
-    });
+    setSaleError('');
+    try {
+      db.createSale({
+        productId: selectedEyeglass.id,
+        clientId: clientType === 'existing' && selectedClient ? selectedClient.id : undefined,
+        clientName:
+          clientType === 'existing' && selectedClient
+            ? `${selectedClient.firstName} ${selectedClient.lastName}`
+            : 'Cliente al Banco',
+        discount,
+        paymentMethod,
+        receiptReference: receiptReference.trim(),
+        notes: notes.trim() || undefined,
+      });
 
-    setShowConfirmDialog(false);
-    onSaleSuccess();
-    onClose();
+      setShowConfirmDialog(false);
+      onSaleSuccess();
+      onClose();
+    } catch (error) {
+      setSaleError(error instanceof Error ? error.message : 'Vendita non registrata. Verificare i dati e riprovare.');
+    }
   };
 
   return (
@@ -436,6 +448,12 @@ export const FastSaleModal: React.FC<FastSaleModalProps> = ({
                 <p><b>Operatore & Terminale:</b> {currentUser.name} ({currentUser.deviceName})</p>
               </div>
 
+              {saleError && (
+                <div role="alert" className="p-3 rounded-xl border border-red-700/70 bg-red-950/50 text-red-200 text-xs">
+                  <div className="flex items-center gap-2 font-bold"><AlertCircle className="w-4 h-4" /> Vendita non registrata</div>
+                  <p className="mt-1">{saleError}</p>
+                </div>
+              )}
               <p className="text-[11px] text-slate-400">
                 L'occhiale verrà marcato come <b>Venduto</b> e la vendita sarà salvata nello storico e nelle statistiche dello studio.
               </p>

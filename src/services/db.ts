@@ -398,12 +398,22 @@ class DatabaseService {
     notes?: string;
   }): Sale {
     const product = this.getEyeglassById(data.productId);
-    if (!product) {
-      throw new Error('Prodotto non trovato');
+    if (!product || product.deletedAt != null) {
+      throw new Error('Prodotto non trovato o eliminato.');
+    }
+    if (product.status !== 'Disponibile') {
+      throw new Error(`Questo occhiale non è vendibile: stato attuale "${product.status}". Verifica la sezione Venduti o il cestino.`);
     }
 
     const effectiveListPrice = product.isPromo && product.promoPrice ? product.promoPrice : product.salePrice;
-    const finalPrice = Math.max(0, effectiveListPrice - data.discount);
+    const discount = Number(data.discount);
+    if (!Number.isFinite(discount) || discount < 0 || discount > effectiveListPrice) {
+      throw new Error('Sconto non valido: deve essere compreso tra €0 e il prezzo di vendita.');
+    }
+    if (!Number.isFinite(effectiveListPrice) || effectiveListPrice < 0 || !Number.isFinite(product.purchasePrice) || product.purchasePrice < 0) {
+      throw new Error('Prezzi prodotto non validi. Correggere il prezzo di vendita e il costo di acquisto prima di registrare la vendita.');
+    }
+    const finalPrice = effectiveListPrice - discount;
     const estimatedGrossMargin = finalPrice - product.purchasePrice;
 
     const saleNumber = 'VND-' + new Date().getFullYear() + '-' + String(this.sales.length + 1).padStart(4, '0');
@@ -417,7 +427,7 @@ class DatabaseService {
       productDescription: `${product.brand} ${product.model} (SKU: ${product.sku})`,
       productPurchasePrice: product.purchasePrice,
       listPrice: effectiveListPrice,
-      discount: data.discount,
+      discount,
       finalPrice,
       estimatedGrossMargin,
       clientId: data.clientId,
@@ -760,45 +770,114 @@ class DatabaseService {
   public exportBackupJson(): string {
     const backupData = {
       app: 'Studio Ottico Di Pietro',
-      version: '1.0.0',
+      version: '1.1.0',
       exportedAt: new Date().toISOString(),
       exportedBy: this.currentUser.name,
       organization: this.organization,
       users: this.users,
+      currentUser: this.currentUser,
       eyeglasses: this.eyeglasses,
       clients: this.clients,
       prescriptions: this.prescriptions,
       sales: this.sales,
       auditLogs: this.auditLogs,
+      notifications: this.notifications,
     };
     return JSON.stringify(backupData, null, 2);
   }
 
   public importBackupJson(jsonString: string): { success: boolean; message: string } {
+    const storageKeys = [
+      'organization', 'users', 'currentUser', 'eyeglasses', 'clients',
+      'prescriptions', 'sales', 'auditLogs', 'notifications',
+    ];
+    const previousValues = new Map<string, string | null>();
+    const writtenKeys: string[] = [];
+
     try {
       const data = JSON.parse(jsonString);
-      if (!data.eyeglasses || !Array.isArray(data.eyeglasses)) {
-        return { success: false, message: 'Formato backup non valido: dati occhiali mancanti.' };
+      if (
+        data?.app !== 'Studio Ottico Di Pietro' ||
+        !Array.isArray(data.eyeglasses) ||
+        !Array.isArray(data.clients) ||
+        !Array.isArray(data.prescriptions) ||
+        !Array.isArray(data.sales) ||
+        !Array.isArray(data.users) ||
+        !Array.isArray(data.auditLogs)
+      ) {
+        return {
+          success: false,
+          message: 'Backup non valido o incompleto. Nessun dato è stato modificato; selezionare un backup completo dello Studio Ottico Di Pietro.',
+        };
       }
 
-      if (data.organization) this.organization = data.organization;
-      if (data.eyeglasses) this.eyeglasses = data.eyeglasses;
-      if (data.clients) this.clients = data.clients;
-      if (data.prescriptions) this.prescriptions = data.prescriptions;
-      if (data.sales) this.sales = data.sales;
+      const restoredUsers = data.users as User[];
+      if (restoredUsers.length === 0) {
+        return { success: false, message: 'Il backup non contiene utenti validi. Nessun dato è stato modificato.' };
+      }
 
-      this.persist('organization', this.organization);
-      this.persist('eyeglasses', this.eyeglasses);
-      this.persist('clients', this.clients);
-      this.persist('prescriptions', this.prescriptions);
-      this.persist('sales', this.sales);
+      const restoredOrganization = data.organization || initialOrganization;
+      const restoredCurrentUser =
+        restoredUsers.find((user) => user.id === data.currentUser?.id) ||
+        restoredUsers[0];
+      const restoredNotifications = Array.isArray(data.notifications) ? data.notifications : [];
+      const values: Record<string, unknown> = {
+        organization: restoredOrganization,
+        users: restoredUsers,
+        currentUser: restoredCurrentUser,
+        eyeglasses: data.eyeglasses,
+        clients: data.clients,
+        prescriptions: data.prescriptions,
+        sales: data.sales,
+        auditLogs: data.auditLogs,
+        notifications: restoredNotifications,
+      };
+
+      // Stage the old values and write/verify every key before changing in-memory state.
+      for (const key of storageKeys) {
+        previousValues.set(key, localStorage.getItem(STORAGE_PREFIX + key));
+      }
+      for (const key of storageKeys) {
+        const serialized = JSON.stringify(values[key]);
+        localStorage.setItem(STORAGE_PREFIX + key, serialized);
+        if (localStorage.getItem(STORAGE_PREFIX + key) !== serialized) {
+          throw new Error('Verifica della scrittura fallita per ' + key);
+        }
+        writtenKeys.push(key);
+      }
+
+      this.organization = restoredOrganization;
+      this.users = restoredUsers;
+      this.currentUser = restoredCurrentUser;
+      this.eyeglasses = data.eyeglasses;
+      this.clients = data.clients;
+      this.prescriptions = data.prescriptions;
+      this.sales = data.sales;
+      this.auditLogs = data.auditLogs;
+      this.notifications = restoredNotifications;
 
       this.addAuditLog('Backup', 'RESTORE-' + Date.now(), 'MODIFICA', 'Ripristinato backup manuale dei dati');
       this.notify();
 
-      return { success: true, message: 'Database ripristinato con successo!' };
-    } catch (e: any) {
-      return { success: false, message: 'Errore di lettura file backup: ' + e.message };
+      return { success: true, message: 'Backup ripristinato e scritture verificate. Controllare comunque i conteggi e alcuni dati prima di riprendere il lavoro.' };
+    } catch (e) {
+      // If any write fails, restore the previous storage values so we do not leave a mixed backup.
+      for (const key of writtenKeys.reverse()) {
+        try {
+          const previous = previousValues.get(key);
+          if (previous === null || previous === undefined) {
+            localStorage.removeItem(STORAGE_PREFIX + key);
+          } else {
+            localStorage.setItem(STORAGE_PREFIX + key, previous);
+          }
+        } catch (rollbackError) {
+          console.error('Errore durante il ripristino dei dati precedenti per ' + key, rollbackError);
+        }
+      }
+      return {
+        success: false,
+        message: 'Ripristino non completato: ' + (e instanceof Error ? e.message : String(e)) + '. I dati in memoria non sono stati sostituiti; verificare lo spazio disponibile e riprovare.',
+      };
     }
   }
 
@@ -1144,35 +1223,18 @@ class DatabaseService {
 
 export const db = new DatabaseService();
 
-import { collection, doc, setDoc, getDocs, Timestamp } from 'firebase/firestore';
 import { dbFirestore } from './firebase';
 
-export async function syncWithCloud() {
-  try {
-    const localEyeglasses = JSON.parse(localStorage.getItem('eyeglasses') || '[]');
-    
-    for (const item of localEyeglasses) {
-      await setDoc(doc(dbFirestore, 'eyeglasses', item.id), {
-        ...item,
-        updatedAt: Timestamp.now()
-      }, { merge: true });
-    }
-
-    const querySnapshot = await getDocs(collection(dbFirestore, 'eyeglasses'));
-    const cloudEyeglasses: any[] = [];
-    querySnapshot.forEach((doc) => {
-      cloudEyeglasses.push(doc.data());
-    });
-
-    if (cloudEyeglasses.length > 0) {
-      localStorage.setItem('eyeglasses', JSON.stringify(cloudEyeglasses));
-    }
-
-    const syncTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    localStorage.setItem('lastSyncTime', syncTime);
-    return { success: true, time: syncTime };
-  } catch (error) {
-    console.error('Errore durante la sincronizzazione:', error);
-    return { success: false, error };
-  }
+/**
+ * Cloud sync intentionally remains disabled until authentication, all-entity
+ * synchronization, conflict handling, and Firestore security rules are ready.
+ * This prevents a partial inventory-only sync from overwriting local data.
+ */
+export async function syncWithCloud(): Promise<{ success: boolean; error?: Error; time?: string }> {
+  const reason = !dbFirestore
+    ? 'Firebase non configurato: la sincronizzazione cloud è disattivata.'
+    : 'Sincronizzazione cloud multi-entità non ancora implementata e collaudata. I dati locali non sono stati modificati.';
+  const error = new Error(reason);
+  console.warn(error.message);
+  return { success: false, error };
 }

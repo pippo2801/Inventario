@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.studiodipietro.inventario',
-  appName: 'gestionale Studio Ottico Di Pietr',
+  appName: 'Studio Ottico Di Pietro',
   webDir: 'dist'
 };
 

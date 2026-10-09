@@ -1,6 +1,6 @@
 # Studio Ottico Di Pietro - Gestionale & AI Multimodale
 
-Sistema gestionale e di intelligenza artificiale multimodale sviluppato per lo **Studio Ottico Di Pietro**, ottimizzato per l'utilizzo su dispositivi mobili, tablet e postazioni desktop del punto vendita.
+Sistema gestionale per lo **Studio Ottico Di Pietro**, basato su React, TypeScript, Vite, Capacitor e un archivio locale offline-first. Le funzionalità cloud e quelle che richiedono credenziali reali sono da configurare prima dell'uso operativo.
 
 ---
 
@@ -32,19 +32,20 @@ Sistema gestionale e di intelligenza artificiale multimodale sviluppato per lo *
 - Calcolo in tempo reale del margine lordo effettivo (`Prezzo di Vendita - Costo di Acquisto`).
 - Scarico immediato dallo stock e dalla vetrina.
 
-### 6. 📱 Sincronizzazione Multi-Terminale & Resilienza Offline
-- Architettura a stato reattivo sincronizzato tra terminali (es. Postazione Filippo e Postazione Angela).
-- Risoluzione automatica dei conflitti basata su timestamp (*last-write-wins*).
-- Audit trail inalterabile per tracciamento delle modifiche e cestino con eliminazione protetta e ripristino.
+### 6. 📱 Modalità Offline, sincronizzazione e audit
+- I dati vengono salvati localmente sul dispositivo per le funzioni offline.
+- **La sincronizzazione cloud multi-dispositivo non è attiva al momento**: Firebase è disabilitato finché non viene configurato il progetto reale dello studio. Non considerare sincronizzati i dati tra telefoni finché l'integrazione non è stata completata e collaudata.
+- Sono presenti funzioni di audit trail e cestino; il loro comportamento va verificato nell'ambiente reale prima dell'uso operativo.
 
-### 7. 📲 Esportazione Flutter & Script Termux
-- Modulo per esportare il codice sorgente mobile Flutter (`pubspec.yaml`, `lib/main.dart`) con guida step-by-step per compilare autonomamente l'APK Android sia da PC che direttamente da smartphone Android tramite Termux.
+### 7. 📲 App Android con Capacitor
+- Il progetto usa Capacitor per creare l'app Android dal bundle web Vite.
+- La compilazione va eseguita dopo aver generato gli asset web e sincronizzato Capacitor.
 
 ---
 
 ## 🛠️ Stack Tecnologico
 
-- **Frontend**: React 18, TypeScript, Tailwind CSS, Lucide Icons
+- **Frontend**: React 19, TypeScript, Tailwind CSS, Lucide Icons
 - **Backend / API**: Node.js, Express, tsx, esbuild
 - **Intelligenza Artificiale**: Google Gemini Multimodal API (`@google/genai`) con fallback euristico locale
 - **Build Tool**: Vite
@@ -55,8 +56,8 @@ Sistema gestionale e di intelligenza artificiale multimodale sviluppato per lo *
 
 1. **Clona il repository**:
    ```bash
-   git clone https://github.com/pippo2801/Inventario-S.-O.-D.-P-.git
-   cd Inventario-S.-O.-D.-P-
+   git clone https://github.com/pippo2801/Inventario.git
+   cd Inventario
    ```
 
 2. **Installa le dipendenze**:
@@ -85,3 +86,35 @@ Sistema gestionale e di intelligenza artificiale multimodale sviluppato per lo *
 ---
 
 *Sviluppato per lo Studio Ottico Di Pietro.*
+
+
+## 📦 Build Android (Capacitor)
+
+Da PC con Android Studio e JDK 21:
+
+```bash
+npm ci
+npm run lint
+npm run build
+npx cap sync android
+```
+
+Poi apri la cartella `android` in Android Studio oppure esegui:
+- Windows PowerShell: `android\\gradlew.bat assembleDebug`
+- Linux/macOS: `cd android && ./gradlew assembleDebug`
+
+Da Termux, se la configurazione Gradle locale non è già impostata, esegui una sola volta dalla cartella del progetto:
+
+```bash
+bash scripts/setup-termux-gradle.sh
+```
+
+Poi esegui `npm ci`, `npm run lint`, `npm run build`, `npx cap sync android` e `cd android && ./gradlew assembleDebug`.
+
+L'APK debug viene generato in `android/app/build/outputs/apk/debug/app-debug.apk`. La compilazione riuscita non sostituisce il collaudo dell'app sul telefono.
+
+## ⚠️ Stato delle integrazioni
+
+- Le API AI avanzate richiedono `GEMINI_API_KEY`; in assenza della chiave alcune funzioni usano fallback locali e l'OCR ricetta non inventa più gradazioni.
+- Firebase è disattivato finché non vengono inserite le impostazioni reali e definite le regole di sicurezza.
+- Prima dell'uso con dati reali dei clienti, verificare backup, permessi, privacy e recupero dei dati su almeno due dispositivi.
