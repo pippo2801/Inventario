@@ -80,7 +80,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
       return;
     }
 
-    const normalizedFiscalCode = fiscalCode.trim().toUpperCase().replace(/\\s/g, '');
+    const normalizedFiscalCode = fiscalCode.trim().toUpperCase().replace(/\s/g, '');
     const duplicate = clients.find((client) => client.fiscalCode.toUpperCase() === normalizedFiscalCode);
     if (duplicate) {
       alert(`Esiste già un cliente con questo codice fiscale: ${duplicate.firstName} ${duplicate.lastName}. Controllare l'anagrafica prima di procedere.`);
