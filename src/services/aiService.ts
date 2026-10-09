@@ -396,6 +396,21 @@ class AIService {
       const fiscalCodeResult = extractFiscalCode(text);
       const codiceFiscale = fiscalCodeResult?.code || '';
 
+      // Read names only from explicitly labelled OCR lines. Never guess or autocorrect
+      // a person's name: OCR mistakes must remain visible for operator verification.
+      const extractLabelledField = (labels: string[]): string => {
+        for (const line of text.split(/\\r?\\n/)) {
+          const match = line.match(/^\\s*(?:NOME|COGNOME|SURNAME|GIVEN NAME|NAME)\\s*[:：-]?\\s*(.*?)\\s*$/i);
+          if (match && labels.some((label) => new RegExp(label, 'i').test(line.slice(0, line.indexOf(match[1]))))) {
+            const value = match[1].replace(/[^\\p{L} '\\-]/gu, '').trim();
+            if (value && value.length >= 2) return value;
+          }
+        }
+        return '';
+      };
+      const cognome = extractLabelledField(['COGNOME', 'SURNAME']);
+      const nome = extractLabelledField(['NOME', 'GIVEN NAME', '^NAME']);
+
       let sesso = '';
       let dataNascita = '';
 
@@ -430,14 +445,16 @@ class AIService {
 
       return {
         codiceFiscale,
-        cognome: '',
-        nome: '',
+        cognome,
+        nome,
         dataNascita,
         comuneNascita: '',
         sesso,
-        confidence: codiceFiscale
-          ? 'Codice Fiscale estratto e decodificato'
-          : 'OCR eseguito: codice fiscale non rilevato',
+        confidence: !codiceFiscale
+          ? 'Codice fiscale non rilevato: inserire o correggere manualmente'
+          : fiscalCodeResult?.checksumValid
+            ? 'Codice fiscale letto: controllo formale superato. Verificare comunque nome, cognome e dati prima del salvataggio.'
+            : 'Codice fiscale letto ma controllo formale non superato: correggere manualmente prima del salvataggio.',
         rawText: text,
       };
     } catch (e) {
