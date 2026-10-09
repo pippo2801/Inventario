@@ -51,12 +51,10 @@ export const SyncStatusBar: React.FC = () => {
     <div className="flex items-center gap-3 bg-slate-800/90 px-3.5 py-2 rounded-xl border border-slate-700/80 text-xs text-slate-200 shadow-md">
       {/* Indicatore LED verde */}
       <div className="relative flex items-center justify-center">
-        {syncing ? (
+        {syncing && (
           <span className="w-2.5 h-2.5 bg-amber-400 rounded-full animate-ping absolute" />
-        ) : (
-          <span className="w-2 h-2 bg-emerald-500 rounded-full shadow-[0_0_8px_#10b981]" />
         )}
-        <span className={`w-2 h-2 rounded-full ${syncing ? 'bg-amber-400' : 'bg-emerald-500'}`} />
+        <span className={`w-2 h-2 rounded-full ${syncing ? 'bg-amber-400' : syncError ? 'bg-red-500' : 'bg-emerald-500'}`} />
       </div>
 
       <button
