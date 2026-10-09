@@ -398,7 +398,7 @@ class DatabaseService {
     notes?: string;
   }): Sale {
     const product = this.getEyeglassById(data.productId);
-    if (!product || product.deletedAt !== null) {
+    if (!product || product.deletedAt != null) {
       throw new Error('Prodotto non trovato o eliminato.');
     }
     if (product.status !== 'Disponibile') {
