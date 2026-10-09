@@ -33,6 +33,8 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   const [search, setSearch] = useState('');
   const [selectedBrand, setSelectedBrand] = useState<string>('Tutti');
   const [selectedGender, setSelectedGender] = useState<string>(initialGenderFilter || 'Tutti');
+  const [selectedShape, setSelectedShape] = useState<string>('Tutte');
+  const [selectedMaterial, setSelectedMaterial] = useState<string>('Tutti');
   const [filterShowcase, setFilterShowcase] = useState(false);
   const [filterPromo, setFilterPromo] = useState(false);
   const [filterStagnant, setFilterStagnant] = useState(false);
@@ -46,6 +48,9 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
     eyeglasses.forEach((e) => set.add(e.brand));
     return ['Tutti', ...Array.from(set).sort()];
   }, [eyeglasses]);
+
+  const shapes = useMemo(() => ['Tutte', ...Array.from(new Set(eyeglasses.map((e) => e.shape).filter((v): v is string => !!v))).sort()], [eyeglasses]);
+  const materials = useMemo(() => ['Tutti', ...Array.from(new Set(eyeglasses.map((e) => e.material).filter((v): v is string => !!v))).sort()], [eyeglasses]);
 
   // Filtering & sorting
   const filteredItems = useMemo(() => {
@@ -65,6 +70,8 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
           !item.sku.toLowerCase().includes(q) &&
           !item.supplierCode.toLowerCase().includes(q) &&
           !item.color.toLowerCase().includes(q) &&
+          !(item.shape || '').toLowerCase().includes(q) &&
+          !(item.material || '').toLowerCase().includes(q) &&
           !item.location.toLowerCase().includes(q)
         ) {
           return false;
@@ -79,6 +86,12 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
         if (selectedGender !== 'Tutti' && item.gender !== selectedGender) {
           return false;
         }
+
+        // Shape filter
+        if (selectedShape !== 'Tutte' && item.shape !== selectedShape) return false;
+
+        // Material filter
+        if (selectedMaterial !== 'Tutti' && item.material !== selectedMaterial) return false;
 
         // Showcase filter
         if (filterShowcase && !item.isShowcase) return false;
@@ -110,7 +123,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
         // default 'date' new first
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
-  }, [eyeglasses, search, selectedBrand, selectedGender, filterShowcase, filterPromo, filterStagnant, sortBy]);
+  }, [eyeglasses, search, selectedBrand, selectedGender, selectedShape, selectedMaterial, filterShowcase, filterPromo, filterStagnant, sortBy]);
 
   const handleToggleShowcase = (e: React.MouseEvent, item: Eyeglass) => {
     e.stopPropagation();
@@ -165,7 +178,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Filtra per marca, modello, SKU, colore o posizione..."
+              placeholder="Filtra per marca, modello, SKU, colore, forma, materiale o posizione..."
               className="w-full pl-10 pr-4 py-2.5 bg-slate-950/80 border border-teal-700/40 rounded-xl text-xs sm:text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/50"
             />
           </div>
@@ -193,6 +206,24 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
             <option value="Uomo">Uomo</option>
             <option value="Donna">Donna</option>
             <option value="Unisex">Unisex</option>
+          </select>
+
+          <select
+            value={selectedShape}
+            onChange={(e) => setSelectedShape(e.target.value)}
+            aria-label="Filtra per forma della montatura"
+            className="px-3 py-2.5 bg-slate-950/80 border border-teal-700/40 rounded-xl text-xs text-white focus:outline-none"
+          >
+            {shapes.map((value) => <option key={value} value={value}>Forma: {value}</option>)}
+          </select>
+
+          <select
+            value={selectedMaterial}
+            onChange={(e) => setSelectedMaterial(e.target.value)}
+            aria-label="Filtra per materiale della montatura"
+            className="px-3 py-2.5 bg-slate-950/80 border border-teal-700/40 rounded-xl text-xs text-white focus:outline-none"
+          >
+            {materials.map((value) => <option key={value} value={value}>Materiale: {value}</option>)}
           </select>
 
           {/* Sort By (Section 82) */}
