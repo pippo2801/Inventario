@@ -28,7 +28,7 @@ export interface Organization {
 
 export type Gender = 'Uomo' | 'Donna' | 'Unisex';
 
-export type FrameShape = 'Aviator' | 'Rettangolare' | 'Rotondo' | 'Squadrato' | 'Cat-eye' | 'Pantografo' | 'Browline' | 'Ovale' | 'Altro';
+export type FrameShape = 'Aviator' | 'Rettangolare' | 'Rotondo' | 'Squadrato' | 'Cat-eye' | 'Pantografo' | 'Browline' | 'Ovale' | 'Mascherina' | 'Altro';
 export type FrameMaterial = 'Metallo' | 'Acetato' | 'Titanio' | 'Misto' | 'A giorno' | 'Legno' | 'Altro';
 export type LensType = 'Monofocali' | 'Progressive' | 'Degressive' | 'Da riposo' | 'Solari Graduati';
 export type PrescriptionStatus = 'CONFERMATA' | 'DA_VERIFICARE' | 'COMPLETA';
