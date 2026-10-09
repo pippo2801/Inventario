@@ -1144,48 +1144,18 @@ class DatabaseService {
 
 export const db = new DatabaseService();
 
-import { collection, doc, setDoc, getDocs, Timestamp } from 'firebase/firestore';
 import { dbFirestore } from './firebase';
 
-export async function syncWithCloud() {
-  if (!dbFirestore) {
-    const error = new Error(
-      'Sincronizzazione cloud non configurata: collega un progetto Firebase valido prima di sincronizzare.'
-    );
-    console.warn(error.message);
-    return { success: false, error };
-  }
-
-  try {
-    const storageKey = STORAGE_PREFIX + 'eyeglasses';
-    const localEyeglasses = JSON.parse(localStorage.getItem(storageKey) || '[]');
-
-    for (const item of localEyeglasses) {
-      await setDoc(
-        doc(dbFirestore, 'eyeglasses', item.id),
-        { ...item, updatedAt: Timestamp.now() },
-        { merge: true }
-      );
-    }
-
-    const querySnapshot = await getDocs(collection(dbFirestore, 'eyeglasses'));
-    const cloudEyeglasses: any[] = [];
-    querySnapshot.forEach((snapshotDoc) => {
-      cloudEyeglasses.push(snapshotDoc.data());
-    });
-
-    if (cloudEyeglasses.length > 0) {
-      localStorage.setItem(storageKey, JSON.stringify(cloudEyeglasses));
-    }
-
-    const syncTime = new Date().toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-    localStorage.setItem('lastSyncTime', syncTime);
-    return { success: true, time: syncTime };
-  } catch (error) {
-    console.error('Errore durante la sincronizzazione:', error);
-    return { success: false, error };
-  }
+/**
+ * Cloud sync intentionally remains disabled until authentication, all-entity
+ * synchronization, conflict handling, and Firestore security rules are ready.
+ * This prevents a partial inventory-only sync from overwriting local data.
+ */
+export async function syncWithCloud(): Promise<{ success: false; error: Error }> {
+  const reason = !dbFirestore
+    ? 'Firebase non configurato: la sincronizzazione cloud è disattivata.'
+    : 'Sincronizzazione cloud multi-entità non ancora implementata e collaudata. I dati locali non sono stati modificati.';
+  const error = new Error(reason);
+  console.warn(error.message);
+  return { success: false, error };
 }
