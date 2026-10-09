@@ -52,7 +52,7 @@ class DatabaseService {
     this.auditLogs = this.load('auditLogs', initialAuditLogs);
     this.notifications = this.load('notifications', initialNotifications);
     this.syncStatus = {
-      state: 'synced',
+      state: 'local_only',
       lastSyncTimestamp: new Date().toISOString(),
       pendingChangesCount: 0,
       activeDevice: 'A',
@@ -206,25 +206,16 @@ class DatabaseService {
     };
   }
 
+  // Cloud sync is not configured yet. Never report a simulated operation as a real sync.
   public triggerSyncSimulation(callback?: () => void) {
-    this.syncStatus.state = 'syncing';
+    this.syncStatus.state = 'local_only';
     this.notify();
-    setTimeout(() => {
-      this.syncStatus.state = 'synced';
-      this.syncStatus.lastSyncTimestamp = new Date().toISOString();
-      this.syncStatus.pendingChangesCount = 0;
-      this.notify();
-      if (callback) callback();
-    }, 1200);
+    if (callback) callback();
   }
 
   public toggleOfflineMode() {
-    if (this.syncStatus.state === 'offline') {
-      this.triggerSyncSimulation();
-    } else {
-      this.syncStatus.state = 'offline';
-      this.notify();
-    }
+    this.syncStatus.state = this.syncStatus.state === 'offline' ? 'local_only' : 'offline';
+    this.notify();
   }
 
   // --- EYEGLASSES (PRODUCTS) ---
@@ -483,10 +474,21 @@ class DatabaseService {
     }
 
     const oldStatus = product.status;
+    const now = new Date().toISOString();
+
+    // Annulla anche la vendita attiva associata, così ricavi e margini non
+    // continuano a conteggiare una transazione che è stata ripristinata.
+    const saleToReverse = this.sales.find(
+      (sale) => sale.productId === productId && (sale.deletedAt === null || sale.deletedAt === undefined)
+    );
+    if (saleToReverse) {
+      saleToReverse.deletedAt = now;
+      this.persist('sales', this.sales);
+    }
 
     product.status = 'Disponibile';
     product.isShowcase = false;
-    product.updatedAt = new Date().toISOString();
+    product.updatedAt = now;
     product.updatedBy = this.currentUser.name;
     product.version += 1;
 
@@ -496,7 +498,7 @@ class DatabaseService {
       'Vendita',
       product.id,
       'RIPRISTINO_VENDITA',
-      `Occhiale ripristinato da Venduto a Disponibile: ${product.brand} ${product.model}.`,
+      `Occhiale ripristinato da Venduto a Disponibile: ${product.brand} ${product.model}.${saleToReverse ? ' Vendita annullata dallo storico attivo (' + saleToReverse.saleNumber + ').' : ''}`,
       `${oldStatus}`,
       'Disponibile'
     );

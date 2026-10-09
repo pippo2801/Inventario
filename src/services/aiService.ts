@@ -405,10 +405,23 @@ class AIService {
       // a person's name: OCR mistakes must remain visible for operator verification.
       const extractLabelledField = (labels: string[]): string => {
         for (const line of text.split(/\r?\n/)) {
-          const match = line.match(/^\s*(?:NOME|COGNOME|SURNAME|GIVEN NAME|NAME)\s*[:：-]?\s*(.*?)\s*$/i);
-          if (match && labels.some((label) => new RegExp(label, 'i').test(line.slice(0, line.indexOf(match[1]))))) {
-            const value = match[1].replace(/[^\p{L} '\-]/gu, '').trim();
-            if (value && value.length >= 2) return value;
+          // Alcune scansioni leggono "COGNOME" come "COGNORME" o con
+          // una lettera aggiunta. Accettiamo la variante solo per l'etichetta,
+          // senza correggere mai il valore del nome della persona.
+          const match = line.match(/^\s*(?:NOME|COGNOM\w{0,2}|SURNAME|GIVEN NAME|NAME)\s*[:：-]?\s*(.*?)\s*$/i);
+          if (match) {
+            const prefix = line.slice(0, line.length - match[1].length).replace(/[:：-\s]+$/, '').trim().toUpperCase();
+            const isRequestedLabel = labels.some((label) => {
+              if (label === 'COGNOME') return /^COGNOM\w{0,2}$/.test(prefix);
+              if (label === 'SURNAME') return /^SURNAME$/.test(prefix);
+              if (label === 'GIVEN NAME') return /^GIVEN NAME$/.test(prefix);
+              if (label === 'NOME') return /^NOME$/.test(prefix);
+              return new RegExp(label, 'i').test(prefix);
+            });
+            if (isRequestedLabel) {
+              const value = match[1].replace(/[^\p{L} '\-]/gu, '').trim();
+              if (value && value.length >= 2) return value;
+            }
           }
         }
         return '';

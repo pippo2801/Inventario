@@ -23,21 +23,12 @@ import { SettingsView } from './views/SettingsView';
 import { FlutterProjectExportModal } from './views/FlutterProjectExportModal';
 
 export function App() {
-  // Gestione tasto indietro Android
-  useEffect(() => {
-    const handleBackButton = (e: PopStateEvent) => {
-      // Evita la chiusura accidentale dell'app
-      window.history.pushState(null, '', window.location.href);
-    };
-    window.history.pushState(null, '', window.location.href);
-    window.addEventListener('popstate', handleBackButton);
-    return () => window.removeEventListener('popstate', handleBackButton);
-  }, []);
-
   const [currentView, setCurrentView] = useState<string>('home');
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
   const [isAddProductOpen, setIsAddProductOpen] = useState<boolean>(false);
+  const [isFastSaleOpen, setIsFastSaleOpen] = useState<boolean>(false);
+  const [clientAddRequest, setClientAddRequest] = useState(0);
   const [isFlutterExportOpen, setIsFlutterExportOpen] = useState<boolean>(false);
 
   // Selected entities for modals
@@ -48,6 +39,21 @@ export function App() {
 
   // Re-render listener for database reactive updates
   const [, setDbVersion] = useState(0);
+
+  // Tasto Indietro Android: chiude prima finestre e menu, poi torna alla Home.
+  useEffect(() => {
+    const handleNativeBackButton = () => {
+      if (isSearchOpen) { setIsSearchOpen(false); return; }
+      if (isAddProductOpen) { setIsAddProductOpen(false); return; }
+      if (isFlutterExportOpen) { setIsFlutterExportOpen(false); return; }
+      if (isFastSaleOpen || saleTargetEyeglass) { setIsFastSaleOpen(false); setSaleTargetEyeglass(null); return; }
+      if (selectedEyeglass) { setSelectedEyeglass(null); return; }
+      if (isSidebarOpen) { setIsSidebarOpen(false); return; }
+      if (currentView !== 'home') { setCurrentView('home'); return; }
+    };
+    window.addEventListener('nativeBackButton', handleNativeBackButton);
+    return () => window.removeEventListener('nativeBackButton', handleNativeBackButton);
+  }, [currentView, isSidebarOpen, isSearchOpen, isAddProductOpen, isFlutterExportOpen, selectedEyeglass, saleTargetEyeglass, isFastSaleOpen]);
 
   useEffect(() => {
     const unsubscribe = db.subscribe(() => {
@@ -122,8 +128,11 @@ export function App() {
       <Sidebar
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
-        currentView={currentView}
+        activeView={currentView}
         onNavigate={handleNavigate}
+        onOpenAddProduct={() => setIsAddProductOpen(true)}
+        onOpenFastSale={() => { setSaleTargetEyeglass(null); setIsFastSaleOpen(true); }}
+        onOpenAddClient={() => { setCurrentView('clients'); setClientAddRequest((value) => value + 1); }}
       />
 
       {/* Main Screen Layout Container */}
@@ -174,6 +183,7 @@ export function App() {
         {currentView === 'clients' && (
           <ClientsView
             initialSelectedClientId={targetClientId}
+            openAddClientRequest={clientAddRequest}
             onNavigate={handleNavigate}
           />
         )}
@@ -201,6 +211,7 @@ export function App() {
 
       {/* 2. Detailed Eyeglass Inspector & Editor (Sections 18 & 19) */}
       <EyeglassDetailModal
+        isOpen={!!selectedEyeglass}
         eyeglass={selectedEyeglass}
         onClose={() => setSelectedEyeglass(null)}
         onOpenFastSale={(item) => setSaleTargetEyeglass(item)}
@@ -208,10 +219,11 @@ export function App() {
 
       {/* 3. Fast Sale Processing Modal (Section 30) */}
       <FastSaleModal
-        isOpen={!!saleTargetEyeglass}
+        isOpen={isFastSaleOpen || !!saleTargetEyeglass}
         preselectedEyeglass={saleTargetEyeglass}
-        onClose={() => setSaleTargetEyeglass(null)}
+        onClose={() => { setIsFastSaleOpen(false); setSaleTargetEyeglass(null); }}
         onSaleSuccess={() => {
+          setIsFastSaleOpen(false);
           setSaleTargetEyeglass(null);
           setSelectedEyeglass(null);
         }}

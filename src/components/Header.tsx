@@ -44,13 +44,15 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   const syncLabel =
-    syncStatus.state === 'synced'
-      ? 'Sincronizzato'
-      : syncStatus.state === 'syncing'
-        ? 'Sincronizzazione'
-        : syncStatus.state === 'offline'
-          ? 'Offline'
-          : 'Conflitto';
+    syncStatus.state === 'local_only'
+      ? 'Solo locale'
+      : syncStatus.state === 'synced'
+        ? 'Sincronizzato'
+        : syncStatus.state === 'syncing'
+          ? 'Sincronizzazione'
+          : syncStatus.state === 'offline'
+            ? 'Offline'
+            : 'Conflitto';
 
   return (
     <header className="sticky top-0 z-40 border-b border-[#ddd7ce] bg-[#f7f4ee]/95 text-[#292725] backdrop-blur-xl">
@@ -74,11 +76,15 @@ export const Header: React.FC<HeaderProps> = ({
           {/* SYNC */}
           <button
             id="btn-sync-status"
-            onClick={() => db.triggerSyncSimulation()}
-            title={`Stato: ${syncLabel}. Clicca per sincronizzare.`}
-            aria-label={`Sincronizzazione: ${syncLabel}`}
+            onClick={() => onNavigate('settings')}
+            title={`Stato: ${syncLabel}. Apri le impostazioni.`}
+            aria-label={`Stato dati: ${syncLabel}; apri impostazioni`}
             className="group flex h-10 items-center gap-2 rounded-full border border-transparent px-2.5 text-[#77716a] transition-all hover:border-[#d2cbc1] hover:bg-white hover:text-[#514d48] sm:px-3"
           >
+            {syncStatus.state === 'local_only' && (
+              <AlertTriangle className="h-4 w-4 text-[#a88655]" />
+            )}
+
             {syncStatus.state === 'synced' && (
               <CheckCircle2 className="h-4 w-4 text-[#66816f]" />
             )}

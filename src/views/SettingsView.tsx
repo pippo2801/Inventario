@@ -216,7 +216,7 @@ export const SettingsView: React.FC = () => {
           <div className="p-4 rounded-xl bg-teal-950/40 border border-teal-800/60 text-xs text-slate-300">
             <h3 className="font-bold text-white mb-1">Architettura Multi-Dispositivo dello Studio</h3>
             <p>
-              Il sistema è configurato per supportare nativamente l'utilizzo contemporaneo da parte di Filippo e Mariangela sui rispettivi smartphone. Le operazioni sono firmate con l'identità dell'operatore e il nome del terminale.
+              In questa versione i dati vengono salvati localmente su questo dispositivo. La sincronizzazione cloud tra i telefoni non è ancora configurata; per trasferire i dati usa Backup & Ripristino.
             </p>
           </div>
 
@@ -284,7 +284,7 @@ export const SettingsView: React.FC = () => {
               <div>
                 <h3 className="text-sm font-bold text-white">Stato del Canale di Sincronizzazione</h3>
                 <p className="text-slate-400 mt-0.5">
-                  Algoritmo di risoluzione automatica basato su timestamp ISO (vince la modifica più recente)
+                  La replica cloud non è configurata: non vengono trasferite modifiche tra telefoni.
                 </p>
               </div>
 
@@ -297,35 +297,36 @@ export const SettingsView: React.FC = () => {
                     : 'bg-amber-950 text-amber-300 border-amber-700'
                 }`}
               >
-                {syncStatus.state.toUpperCase()}
+                {syncStatus.state === 'local_only' ? 'SOLO LOCALE' : syncStatus.state.toUpperCase()}
               </span>
             </div>
 
             <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 grid grid-cols-2 gap-3">
               <div>
-                <span className="text-[10px] text-slate-400 block">Ultima sincronizzazione completata:</span>
-                <span className="font-mono text-white">{new Date(syncStatus.lastSyncTime).toLocaleTimeString()}</span>
+                <span className="text-[10px] text-slate-400 block">Ultimo salvataggio locale:</span>
+                <span className="font-mono text-white">Automatico sul dispositivo</span>
               </div>
               <div>
-                <span className="text-[10px] text-slate-400 block">Modifiche in attesa di replica:</span>
-                <span className="font-mono text-teal-300">{syncStatus.pendingChanges} operazioni</span>
+                <span className="text-[10px] text-slate-400 block">Stato replica cloud:</span>
+                <span className="font-mono text-amber-300">Non configurata</span>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-amber-800/70 bg-amber-950/30 p-3 text-amber-200">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <p>
+                  La sincronizzazione tra dispositivi non è attiva. Non premere qui per simulare un invio: per ora crea ed esporta backup manuali e trasferiscili in modo sicuro.
+                </p>
               </div>
             </div>
 
             <div className="flex flex-wrap gap-2 pt-2">
               <button
-                onClick={() => db.triggerSyncSimulation()}
-                className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-semibold text-xs flex items-center gap-1.5 transition-colors"
-              >
-                <RefreshCw className="w-4 h-4" />
-                <span>Forza Sincronizzazione Adesso</span>
-              </button>
-
-              <button
                 onClick={() => db.toggleOfflineMode()}
                 className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition-colors"
               >
-                {syncStatus.state === 'offline' ? 'Disattiva Simulazione Offline' : 'Simula Disconnessione Offline (Sezione 47)'}
+                {syncStatus.state === 'offline' ? 'Ritorna alla modalità locale' : 'Simula disconnessione offline'}
               </button>
             </div>
           </div>
@@ -338,7 +339,7 @@ export const SettingsView: React.FC = () => {
           <div className="p-4 rounded-xl bg-teal-950/40 border border-teal-800/60 text-slate-300">
             <h3 className="font-bold text-white mb-1">Regola dei 3 Backup (Sezione 42)</h3>
             <p>
-              1. Copia locale sullo smartphone • 2. Copia replicata sul secondo terminale • 3. Esportazione periodica su file JSON esterno/cloud.
+              1. Dati locali sullo smartphone • 2. Esportazione periodica di backup JSON • 3. Copia sicura del backup su un altro supporto. La replica automatica sul secondo telefono non è attiva.
             </p>
           </div>
 
