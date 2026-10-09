@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { db } from '../services/db';
 import { aiService, isValidItalianFiscalCode } from '../services/aiService';
 import { Camera as CapacitorCamera, CameraResultType, CameraSource } from '@capacitor/camera';
@@ -24,12 +24,14 @@ import {
 interface ClientsViewProps {
   onSelectClient?: (clientId: string) => void;
   initialSelectedClientId?: string;
+  openAddClientRequest?: number;
   onNavigate: (view: string, id?: string) => void;
 }
 
 export const ClientsView: React.FC<ClientsViewProps> = ({
   onSelectClient,
   initialSelectedClientId,
+  openAddClientRequest = 0,
   onNavigate,
 }) => {
   const [search, setSearch] = useState('');
@@ -39,6 +41,10 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showOcrModal, setShowOcrModal] = useState(false);
+
+  useEffect(() => {
+    if (openAddClientRequest > 0) setShowAddModal(true);
+  }, [openAddClientRequest]);
 
   // New Client Form
   const [firstName, setFirstName] = useState('');
