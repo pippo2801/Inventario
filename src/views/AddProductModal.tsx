@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { db } from '../services/db';
 import { aiService } from '../services/aiService';
 import { Eyeglass, Gender, FrameShape, FrameMaterial } from '../types';
@@ -75,6 +75,30 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
   const [aiMessage, setAiMessage] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    // A new opening must always start with a clean form, never the previous product.
+    setPhotoUrl('');
+    setBrand('');
+    setModel('');
+    setColor('');
+    setGender('');
+    setPurchasePrice(0);
+    setSalePrice(0);
+    setLocation('');
+    setSku(`OPT-${Date.now().toString().slice(-8)}`);
+    setSupplierCode('');
+    setShape('');
+    setMaterial('');
+    setIsShowcase(false);
+    setIsPromo(false);
+    setPromoPrice(undefined);
+    setNotes('');
+    setAiAnalyzing(false);
+    setAiSuggestionsReceived(false);
+    setAiMessage('');
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
