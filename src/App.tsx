@@ -27,6 +27,8 @@ export function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
   const [isAddProductOpen, setIsAddProductOpen] = useState<boolean>(false);
+  const [isFastSaleOpen, setIsFastSaleOpen] = useState<boolean>(false);
+  const [clientAddRequest, setClientAddRequest] = useState(0);
   const [isFlutterExportOpen, setIsFlutterExportOpen] = useState<boolean>(false);
 
   // Selected entities for modals
@@ -44,14 +46,14 @@ export function App() {
       if (isSearchOpen) { setIsSearchOpen(false); return; }
       if (isAddProductOpen) { setIsAddProductOpen(false); return; }
       if (isFlutterExportOpen) { setIsFlutterExportOpen(false); return; }
-      if (saleTargetEyeglass) { setSaleTargetEyeglass(null); return; }
+      if (isFastSaleOpen || saleTargetEyeglass) { setIsFastSaleOpen(false); setSaleTargetEyeglass(null); return; }
       if (selectedEyeglass) { setSelectedEyeglass(null); return; }
       if (isSidebarOpen) { setIsSidebarOpen(false); return; }
       if (currentView !== 'home') { setCurrentView('home'); return; }
     };
     window.addEventListener('nativeBackButton', handleNativeBackButton);
     return () => window.removeEventListener('nativeBackButton', handleNativeBackButton);
-  }, [currentView, isSidebarOpen, isSearchOpen, isAddProductOpen, isFlutterExportOpen, selectedEyeglass, saleTargetEyeglass]);
+  }, [currentView, isSidebarOpen, isSearchOpen, isAddProductOpen, isFlutterExportOpen, selectedEyeglass, saleTargetEyeglass, isFastSaleOpen]);
 
   useEffect(() => {
     const unsubscribe = db.subscribe(() => {
@@ -128,6 +130,9 @@ export function App() {
         onClose={() => setIsSidebarOpen(false)}
         activeView={currentView}
         onNavigate={handleNavigate}
+        onOpenAddProduct={() => setIsAddProductOpen(true)}
+        onOpenFastSale={() => { setSaleTargetEyeglass(null); setIsFastSaleOpen(true); }}
+        onOpenAddClient={() => { setCurrentView('clients'); setClientAddRequest((value) => value + 1); }}
       />
 
       {/* Main Screen Layout Container */}
@@ -178,6 +183,7 @@ export function App() {
         {currentView === 'clients' && (
           <ClientsView
             initialSelectedClientId={targetClientId}
+            openAddClientRequest={clientAddRequest}
             onNavigate={handleNavigate}
           />
         )}
@@ -213,10 +219,11 @@ export function App() {
 
       {/* 3. Fast Sale Processing Modal (Section 30) */}
       <FastSaleModal
-        isOpen={!!saleTargetEyeglass}
+        isOpen={isFastSaleOpen || !!saleTargetEyeglass}
         preselectedEyeglass={saleTargetEyeglass}
-        onClose={() => setSaleTargetEyeglass(null)}
+        onClose={() => { setIsFastSaleOpen(false); setSaleTargetEyeglass(null); }}
         onSaleSuccess={() => {
+          setIsFastSaleOpen(false);
           setSaleTargetEyeglass(null);
           setSelectedEyeglass(null);
         }}
