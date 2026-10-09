@@ -23,17 +23,6 @@ import { SettingsView } from './views/SettingsView';
 import { FlutterProjectExportModal } from './views/FlutterProjectExportModal';
 
 export function App() {
-  // Gestione tasto indietro Android
-  useEffect(() => {
-    const handleBackButton = (e: PopStateEvent) => {
-      // Evita la chiusura accidentale dell'app
-      window.history.pushState(null, '', window.location.href);
-    };
-    window.history.pushState(null, '', window.location.href);
-    window.addEventListener('popstate', handleBackButton);
-    return () => window.removeEventListener('popstate', handleBackButton);
-  }, []);
-
   const [currentView, setCurrentView] = useState<string>('home');
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
@@ -48,6 +37,21 @@ export function App() {
 
   // Re-render listener for database reactive updates
   const [, setDbVersion] = useState(0);
+
+  // Tasto Indietro Android: chiude prima finestre e menu, poi torna alla Home.
+  useEffect(() => {
+    const handleNativeBackButton = () => {
+      if (isSearchOpen) { setIsSearchOpen(false); return; }
+      if (isAddProductOpen) { setIsAddProductOpen(false); return; }
+      if (isFlutterExportOpen) { setIsFlutterExportOpen(false); return; }
+      if (saleTargetEyeglass) { setSaleTargetEyeglass(null); return; }
+      if (selectedEyeglass) { setSelectedEyeglass(null); return; }
+      if (isSidebarOpen) { setIsSidebarOpen(false); return; }
+      if (currentView !== 'home') { setCurrentView('home'); return; }
+    };
+    window.addEventListener('nativeBackButton', handleNativeBackButton);
+    return () => window.removeEventListener('nativeBackButton', handleNativeBackButton);
+  }, [currentView, isSidebarOpen, isSearchOpen, isAddProductOpen, isFlutterExportOpen, selectedEyeglass, saleTargetEyeglass]);
 
   useEffect(() => {
     const unsubscribe = db.subscribe(() => {
@@ -122,7 +126,7 @@ export function App() {
       <Sidebar
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
-        currentView={currentView}
+        activeView={currentView}
         onNavigate={handleNavigate}
       />
 
@@ -201,6 +205,7 @@ export function App() {
 
       {/* 2. Detailed Eyeglass Inspector & Editor (Sections 18 & 19) */}
       <EyeglassDetailModal
+        isOpen={!!selectedEyeglass}
         eyeglass={selectedEyeglass}
         onClose={() => setSelectedEyeglass(null)}
         onOpenFastSale={(item) => setSaleTargetEyeglass(item)}
