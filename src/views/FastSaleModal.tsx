@@ -101,7 +101,11 @@ export const FastSaleModal: React.FC<FastSaleModalProps> = ({
         ? selectedEyeglass.promoPrice
         : selectedEyeglass.salePrice;
 
-    const discount = Math.max(0, effectiveListPrice - salePrice);
+    if (!Number.isFinite(salePrice) || salePrice < 0 || salePrice > effectiveListPrice) {
+      setSaleError('Il prezzo finale deve essere compreso tra €0 e il prezzo di listino. Correggere l’importo prima di confermare.');
+      return;
+    }
+    const discount = Math.round((effectiveListPrice - salePrice) * 100) / 100;
 
     setSaleError('');
     try {
