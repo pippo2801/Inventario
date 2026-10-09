@@ -32,13 +32,14 @@ Sistema gestionale per lo **Studio Ottico Di Pietro**, basato su React, TypeScri
 - Calcolo in tempo reale del margine lordo effettivo (`Prezzo di Vendita - Costo di Acquisto`).
 - Scarico immediato dallo stock e dalla vetrina.
 
-### 6. 📱 Sincronizzazione Multi-Terminale & Resilienza Offline
-- Architettura a stato reattivo sincronizzato tra terminali (es. Postazione Filippo e Postazione Angela).
-- Risoluzione automatica dei conflitti basata su timestamp (*last-write-wins*).
-- Audit trail inalterabile per tracciamento delle modifiche e cestino con eliminazione protetta e ripristino.
+### 6. 📱 Modalità Offline, sincronizzazione e audit
+- I dati vengono salvati localmente sul dispositivo per le funzioni offline.
+- **La sincronizzazione cloud multi-dispositivo non è attiva al momento**: Firebase è disabilitato finché non viene configurato il progetto reale dello studio. Non considerare sincronizzati i dati tra telefoni finché l'integrazione non è stata completata e collaudata.
+- Sono presenti funzioni di audit trail e cestino; il loro comportamento va verificato nell'ambiente reale prima dell'uso operativo.
 
-### 7. 📲 Esportazione Flutter & Script Termux
-- Modulo per esportare il codice sorgente mobile Flutter (`pubspec.yaml`, `lib/main.dart`) con guida step-by-step per compilare autonomamente l'APK Android sia da PC che direttamente da smartphone Android tramite Termux.
+### 7. 📲 App Android con Capacitor
+- Il progetto usa Capacitor per creare l'app Android dal bundle web Vite.
+- La compilazione va eseguita dopo aver generato gli asset web e sincronizzato Capacitor.
 
 ---
 
@@ -55,8 +56,8 @@ Sistema gestionale per lo **Studio Ottico Di Pietro**, basato su React, TypeScri
 
 1. **Clona il repository**:
    ```bash
-   git clone https://github.com/pippo2801/Inventario-S.-O.-D.-P-.git
-   cd Inventario-S.-O.-D.-P-
+   git clone https://github.com/pippo2801/Inventario.git
+   cd Inventario
    ```
 
 2. **Installa le dipendenze**:
