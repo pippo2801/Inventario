@@ -398,12 +398,22 @@ class DatabaseService {
     notes?: string;
   }): Sale {
     const product = this.getEyeglassById(data.productId);
-    if (!product) {
-      throw new Error('Prodotto non trovato');
+    if (!product || product.deletedAt !== null) {
+      throw new Error('Prodotto non trovato o eliminato.');
+    }
+    if (product.status !== 'Disponibile') {
+      throw new Error(`Questo occhiale non è vendibile: stato attuale "${product.status}". Verifica la sezione Venduti o il cestino.`);
     }
 
     const effectiveListPrice = product.isPromo && product.promoPrice ? product.promoPrice : product.salePrice;
-    const finalPrice = Math.max(0, effectiveListPrice - data.discount);
+    const discount = Number(data.discount);
+    if (!Number.isFinite(discount) || discount < 0 || discount > effectiveListPrice) {
+      throw new Error('Sconto non valido: deve essere compreso tra €0 e il prezzo di vendita.');
+    }
+    if (!Number.isFinite(effectiveListPrice) || effectiveListPrice < 0 || !Number.isFinite(product.purchasePrice) || product.purchasePrice < 0) {
+      throw new Error('Prezzi prodotto non validi. Correggere il prezzo di vendita e il costo di acquisto prima di registrare la vendita.');
+    }
+    const finalPrice = effectiveListPrice - discount;
     const estimatedGrossMargin = finalPrice - product.purchasePrice;
 
     const saleNumber = 'VND-' + new Date().getFullYear() + '-' + String(this.sales.length + 1).padStart(4, '0');
@@ -417,7 +427,7 @@ class DatabaseService {
       productDescription: `${product.brand} ${product.model} (SKU: ${product.sku})`,
       productPurchasePrice: product.purchasePrice,
       listPrice: effectiveListPrice,
-      discount: data.discount,
+      discount,
       finalPrice,
       estimatedGrossMargin,
       clientId: data.clientId,
