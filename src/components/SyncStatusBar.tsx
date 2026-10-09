@@ -4,24 +4,44 @@ import { syncWithCloud } from '../services/db';
 
 export const SyncStatusBar: React.FC = () => {
   const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [lastSync, setLastSync] = useState<string>(
     localStorage.getItem('lastSyncTime') || 'Mai'
   );
 
   const handleManualSync = async () => {
+    if (syncing) return;
     setSyncing(true);
-    const result = await syncWithCloud();
-    if (result.success && result.time) {
-      setLastSync(result.time);
+    setSyncError(null);
+    try {
+      const result = await syncWithCloud();
+      if (result.success && result.time) {
+        setLastSync(result.time);
+      } else {
+        const reason = result.error instanceof Error
+          ? result.error.message
+          : 'Controlla la connessione e la configurazione cloud.';
+        setSyncError(reason);
+      }
+    } catch (error) {
+      setSyncError(error instanceof Error ? error.message : 'Sincronizzazione non riuscita.');
+    } finally {
+      setSyncing(false);
     }
-    setSyncing(false);
   };
 
   useEffect(() => {
+    let lastAutomaticSyncDate = '';
     const checkTimer = setInterval(() => {
       const now = new Date();
-      if (now.getHours() === 20 && now.getMinutes() === 0) {
-        handleManualSync();
+      const today = now.toDateString();
+      if (
+        now.getHours() === 20 &&
+        now.getMinutes() === 0 &&
+        lastAutomaticSyncDate !== today
+      ) {
+        lastAutomaticSyncDate = today;
+        void handleManualSync();
       }
     }, 60000);
     return () => clearInterval(checkTimer);
@@ -50,6 +70,11 @@ export const SyncStatusBar: React.FC = () => {
           {syncing ? 'Sincronizzazione...' : `Sync: ${lastSync}`}
         </span>
       </button>
+      {syncError && (
+        <span role="status" className="max-w-64 text-amber-300" title={syncError}>
+          Sync non disponibile: {syncError}
+        </span>
+      )}
     </div>
   );
 };
