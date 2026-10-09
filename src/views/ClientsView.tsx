@@ -400,7 +400,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
             </div>
 
             <p className="text-xs text-slate-300">
-              La lettura automatica può confondere lettere e nomi (per esempio I/L o una lettera mancante). Controlla sempre il testo OCR e confronta nome, cognome e codice fiscale con la tessera prima di salvare.
+              L'OCR può confondere lettere e spostare i campi. Il testo originale è mostrato qui sotto: controlla e correggi manualmente nome, cognome e codice fiscale sulla tessera. Il controllo formale del codice fiscale non certifica l'identità della persona.
             </p>
 
             <input
@@ -442,16 +442,16 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
             {/* OCR Extracted Data (Human Check - Section 27) */}
             {ocrResult && (
               <div className="p-3.5 rounded-xl bg-teal-950/60 border border-teal-700 text-xs space-y-2">
-                <div className="flex items-center justify-between text-teal-300 font-bold">
-                  <span>Dati Rilevati dall'OCR (Verifica e Correggi):</span>
-                  <span className={`text-[10px] ${ocrResult.confidence.includes('non superato') || ocrResult.confidence.includes('non rilevato') ? 'text-amber-300' : 'text-emerald-300'}`}>{ocrResult.confidence}</span>
-              {ocrResult.rawText && (
-                <div className="mt-2 p-2 rounded bg-black/40 border border-amber-700/60">
-                  <div className="text-[10px] text-amber-300 font-bold mb-1">TESTO OCR LETTO:</div>
-                  <pre className="text-[10px] text-amber-100 whitespace-pre-wrap max-h-40 overflow-auto">{ocrResult.rawText}</pre>
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 text-teal-300 font-bold">
+                  <span>Dati rilevati dall'OCR (verifica e correggi):</span>
+                  <span className="text-[10px] text-amber-300 font-medium leading-relaxed sm:max-w-[60%] sm:text-right">{ocrResult.confidence}</span>
                 </div>
-              )}
-                </div>
+                {ocrResult.rawText && (
+                  <div className="p-3 rounded-lg bg-black/40 border border-amber-700/60 min-w-0">
+                    <div className="text-[10px] text-amber-300 font-bold mb-1">TESTO OCR ORIGINALE (non corretto automaticamente):</div>
+                    <pre className="text-[11px] text-amber-100 whitespace-pre-wrap break-words max-h-40 overflow-y-auto font-mono">{ocrResult.rawText}</pre>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
