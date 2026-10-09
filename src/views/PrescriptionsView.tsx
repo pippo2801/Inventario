@@ -95,7 +95,10 @@ export const PrescriptionsView: React.FC = () => {
           if (typeof res.pd.os === 'number') setPdOs(res.pd.os);
         }
         if (typeof res.mountingHeight === 'number') setMountingHeight(res.mountingHeight);
-        if (res.notes) setNotes(res.notes);\n        if (res.confidence && /non disponibile|non eseguito|manuale richiesto/i.test(res.confidence)) {\n          alert(res.confidence + '\\n\\nI valori non sono stati riconosciuti: controlla e inserisci i dati manualmente.');\n        }
+        if (res.notes) setNotes(res.notes);
+        if (res.confidence && /non disponibile|non eseguito|manuale richiesto/i.test(res.confidence)) {
+          alert(res.confidence + '\\n\\nI valori non sono stati riconosciuti: controlla e inserisci i dati manualmente.');
+        }
       } catch (err) {
         console.error(err);
       } finally {
