@@ -24,6 +24,59 @@ export interface NaturalSearchExecutionResult {
   source: 'ai_cloud' | 'local_fallback';
 }
 
+const CF_LETTER_VALUES: Record<string, number> = {
+  A: 1, B: 0, C: 5, D: 7, E: 9, F: 13, G: 15, H: 17, I: 19, J: 21,
+  K: 2, L: 4, M: 18, N: 20, O: 11, P: 3, Q: 6, R: 8, S: 12, T: 14,
+  U: 16, V: 10, W: 22, X: 25, Y: 24, Z: 23,
+};
+const CF_DIGIT_ODD_VALUES = [1, 0, 5, 7, 9, 13, 15, 17, 19, 21];
+const CF_CHECK_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+function fiscalCodeChecksumIsValid(code: string): boolean {
+  if (code.length !== 16) return false;
+  let sum = 0;
+  for (let i = 0; i < 15; i += 1) {
+    const char = code[i];
+    if (i % 2 === 0) {
+      if (/\\d/.test(char)) sum += CF_DIGIT_ODD_VALUES[Number(char)];
+      else if (char in CF_LETTER_VALUES) sum += CF_LETTER_VALUES[char];
+      else return false;
+    } else if (/\\d/.test(char)) {
+      sum += Number(char);
+    } else if (/[A-Z]/.test(char)) {
+      sum += char.charCodeAt(0) - 65;
+    } else {
+      return false;
+    }
+  }
+  return CF_CHECK_LETTERS[sum % 26] === code[15];
+}
+
+function extractFiscalCode(text: string): { code: string; checksumValid: boolean } | null {
+  const normalized = text.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const candidates: string[] = [];
+  const letterPositions = new Set([0, 1, 2, 3, 4, 5, 8, 11, 15]);
+  const letterFixes: Record<string, string> = { '0': 'O', '1': 'I', '2': 'Z', '5': 'S', '8': 'B' };
+  const digitFixes: Record<string, string> = { O: '0', Q: '0', D: '0', I: '1', L: '1', Z: '2', S: '5', G: '6', B: '8' };
+
+  for (let start = 0; start <= normalized.length - 16; start += 1) {
+    let candidate = normalized.slice(start, start + 16).split('');
+    candidate = candidate.map((char, index) => {
+      if (letterPositions.has(index)) return letterFixes[char] || char;
+      return digitFixes[char] || char;
+    });
+    const code = candidate.join('');
+    if (/^[A-Z]{6}\\d{2}[A-Z]\\d{2}[A-Z]\\d{3}[A-Z]$/.test(code)) {
+      candidates.push(code);
+    }
+  }
+
+  const valid = candidates.find(fiscalCodeChecksumIsValid);
+  if (valid) return { code: valid, checksumValid: true };
+  if (candidates.length > 0) return { code: candidates[0], checksumValid: false };
+  return null;
+}
+
 class AIService {
   // 1. Natural Language Search
   public async searchWithNaturalLanguage(query: string): Promise<NaturalSearchExecutionResult> {
@@ -340,10 +393,8 @@ class AIService {
       const ret = await SanitaryCardOCR.recognize({ image: imageBase64 });
       const text = ret.text || '';
 
-      const normalizedText = text.toUpperCase().replace(/[^A-Z0-9]/g, '');
-      const cfRegex = /[A-Z]{6}[0-9L-V]{2}[A-Z][0-9L-V]{2}[A-Z][0-9L-V]{3}[A-Z]/;
-      const cfMatch = normalizedText.match(cfRegex);
-      const codiceFiscale = cfMatch ? cfMatch[0].toUpperCase() : '';
+      const fiscalCodeResult = extractFiscalCode(text);
+      const codiceFiscale = fiscalCodeResult?.code || '';
 
       let sesso = '';
       let dataNascita = '';
@@ -360,7 +411,7 @@ class AIService {
         };
 
         const mChar = codiceFiscale.charAt(8);
-        const month = monthMap[mChar] || '01';
+        const month = monthMap[mChar] || '';
 
         let dVal = parseInt(codiceFiscale.substring(9, 11), 10);
 
@@ -372,7 +423,7 @@ class AIService {
         }
 
         const day = dVal < 10 ? '0' + dVal : String(dVal);
-        dataNascita = `${year}-${month}-${day}`;
+        if (month && dVal >= 1 && dVal <= 31) {\n          dataNascita = `${year}-${month}-${day}`;\n        }
       }
 
       return {
