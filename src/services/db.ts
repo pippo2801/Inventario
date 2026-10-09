@@ -770,16 +770,18 @@ class DatabaseService {
   public exportBackupJson(): string {
     const backupData = {
       app: 'Studio Ottico Di Pietro',
-      version: '1.0.0',
+      version: '1.1.0',
       exportedAt: new Date().toISOString(),
       exportedBy: this.currentUser.name,
       organization: this.organization,
       users: this.users,
+      currentUser: this.currentUser,
       eyeglasses: this.eyeglasses,
       clients: this.clients,
       prescriptions: this.prescriptions,
       sales: this.sales,
       auditLogs: this.auditLogs,
+      notifications: this.notifications,
     };
     return JSON.stringify(backupData, null, 2);
   }
@@ -787,28 +789,58 @@ class DatabaseService {
   public importBackupJson(jsonString: string): { success: boolean; message: string } {
     try {
       const data = JSON.parse(jsonString);
-      if (!data.eyeglasses || !Array.isArray(data.eyeglasses)) {
-        return { success: false, message: 'Formato backup non valido: dati occhiali mancanti.' };
+      if (
+        data?.app !== 'Studio Ottico Di Pietro' ||
+        !Array.isArray(data.eyeglasses) ||
+        !Array.isArray(data.clients) ||
+        !Array.isArray(data.prescriptions) ||
+        !Array.isArray(data.sales) ||
+        !Array.isArray(data.users) ||
+        !Array.isArray(data.auditLogs)
+      ) {
+        return {
+          success: false,
+          message: 'Backup non valido o incompleto. Nessun dato è stato modificato; selezionare un backup completo dello Studio Ottico Di Pietro.',
+        };
       }
 
-      if (data.organization) this.organization = data.organization;
-      if (data.eyeglasses) this.eyeglasses = data.eyeglasses;
-      if (data.clients) this.clients = data.clients;
-      if (data.prescriptions) this.prescriptions = data.prescriptions;
-      if (data.sales) this.sales = data.sales;
+      // Validate the whole backup before changing in-memory state or local storage.
+      const restoredUsers = data.users as User[];
+      if (restoredUsers.length === 0) {
+        return { success: false, message: 'Il backup non contiene utenti validi. Nessun dato è stato modificato.' };
+      }
+
+      this.organization = data.organization || initialOrganization;
+      this.users = restoredUsers;
+      this.currentUser =
+        restoredUsers.find((user) => user.id === data.currentUser?.id) ||
+        restoredUsers[0];
+      this.eyeglasses = data.eyeglasses;
+      this.clients = data.clients;
+      this.prescriptions = data.prescriptions;
+      this.sales = data.sales;
+      this.auditLogs = data.auditLogs;
+      this.notifications = Array.isArray(data.notifications) ? data.notifications : [];
 
       this.persist('organization', this.organization);
+      this.persist('users', this.users);
+      this.persist('currentUser', this.currentUser);
       this.persist('eyeglasses', this.eyeglasses);
       this.persist('clients', this.clients);
       this.persist('prescriptions', this.prescriptions);
       this.persist('sales', this.sales);
+      this.persist('auditLogs', this.auditLogs);
+      this.persist('notifications', this.notifications);
 
       this.addAuditLog('Backup', 'RESTORE-' + Date.now(), 'MODIFICA', 'Ripristinato backup manuale dei dati');
       this.notify();
 
-      return { success: true, message: 'Database ripristinato con successo!' };
-    } catch (e: any) {
-      return { success: false, message: 'Errore di lettura file backup: ' + e.message };
+      return { success: true, message: 'Backup ripristinato. Verificare conteggi e dati principali prima di riprendere il lavoro.' };
+    } catch (e) {
+      return {
+        success: false,
+        message: 'Errore di lettura del backup: ' + (e instanceof Error ? e.message : String(e)) + '. Nessun ripristino completato.',
+      };
     }
   }
 
