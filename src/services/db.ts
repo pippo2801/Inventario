@@ -474,10 +474,21 @@ class DatabaseService {
     }
 
     const oldStatus = product.status;
+    const now = new Date().toISOString();
+
+    // Annulla anche la vendita attiva associata, così ricavi e margini non
+    // continuano a conteggiare una transazione che è stata ripristinata.
+    const saleToReverse = this.sales.find(
+      (sale) => sale.productId === productId && (sale.deletedAt === null || sale.deletedAt === undefined)
+    );
+    if (saleToReverse) {
+      saleToReverse.deletedAt = now;
+      this.persist('sales', this.sales);
+    }
 
     product.status = 'Disponibile';
     product.isShowcase = false;
-    product.updatedAt = new Date().toISOString();
+    product.updatedAt = now;
     product.updatedBy = this.currentUser.name;
     product.version += 1;
 
@@ -487,7 +498,7 @@ class DatabaseService {
       'Vendita',
       product.id,
       'RIPRISTINO_VENDITA',
-      `Occhiale ripristinato da Venduto a Disponibile: ${product.brand} ${product.model}.`,
+      `Occhiale ripristinato da Venduto a Disponibile: ${product.brand} ${product.model}.${saleToReverse ? ' Vendita annullata dallo storico attivo (' + saleToReverse.saleNumber + ').' : ''}`,
       `${oldStatus}`,
       'Disponibile'
     );
