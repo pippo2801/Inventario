@@ -38,6 +38,7 @@ interface SidebarProps {
   onNavigate: (view: string) => void;
   onOpenAddProduct?: () => void;
   onOpenFastSale?: () => void;
+  onOpenAddClient?: () => void;
 }
 
 type MenuGroup = 'occhiali' | 'pazienti' | 'prescrizioni' | 'vendite' | 'attivita' | 'sistema';
@@ -57,6 +58,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onNavigate,
   onOpenAddProduct,
   onOpenFastSale,
+  onOpenAddClient,
 }) => {
   const settings = db.getSettings();
   const users = db.getUsers();
@@ -112,7 +114,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             return;
           }
           if (item.id === 'new-client') {
-            // Se esiste una funzione onOpenAddClient o simili, oppure navighiamo a clients
+            onOpenAddClient?.();
             onClose();
             return;
           }
