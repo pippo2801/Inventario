@@ -242,13 +242,13 @@ class AIService {
       analysis = await res.json();
     } catch (e) {
       analysis = {
-        shape: 'Aviator',
-        color: 'Oro / Verde',
-        frameType: 'Metallo',
+        shape: '',
+        color: '',
+        frameType: '',
         detectedBrand: null,
         detectedModelOrCode: null,
         confidence: 'Bassa',
-        stimaIaDetails: 'Elaborazione locale stimata da caratteristiche visive di base.',
+        stimaIaDetails: 'Analisi automatica non disponibile. Nessuna categoria è stata indovinata: inserire i dati manualmente.',
       };
     }
 
