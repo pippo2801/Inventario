@@ -1151,7 +1151,7 @@ import { dbFirestore } from './firebase';
  * synchronization, conflict handling, and Firestore security rules are ready.
  * This prevents a partial inventory-only sync from overwriting local data.
  */
-export async function syncWithCloud(): Promise<{ success: false; error: Error }> {
+export async function syncWithCloud(): Promise<{ success: boolean; error?: Error; time?: string }> {
   const reason = !dbFirestore
     ? 'Firebase non configurato: la sincronizzazione cloud è disattivata.'
     : 'Sincronizzazione cloud multi-entità non ancora implementata e collaudata. I dati locali non sono stati modificati.';
