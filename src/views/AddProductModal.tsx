@@ -26,9 +26,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
   onClose,
   onAdded,
 }) => {
-  const [photoUrl, setPhotoUrl] = useState<string>(
-    'https://images.unsplash.com/photo-1511499767150-a48a237f0083?w=600&auto=format&fit=crop&q=80'
-  );
+  const [photoUrl, setPhotoUrl] = useState<string>('');
   const [brand, setBrand] = useState('');
   const [model, setModel] = useState('');
   const [color, setColor] = useState('');
@@ -48,6 +46,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
   // AI assistant state
   const [aiAnalyzing, setAiAnalyzing] = useState(false);
   const [aiSuggestionsReceived, setAiSuggestionsReceived] = useState(false);
+  const [aiMessage, setAiMessage] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -61,20 +60,40 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
     reader.onload = async () => {
       const base64 = reader.result as string;
       setPhotoUrl(base64);
+      setAiSuggestionsReceived(false);
+      setAiMessage('');
 
-      // Trigger AI Assistant for suggestions (Section 26)
+      // AI suggestions are optional: never substitute guessed categories when analysis is unavailable.
       setAiAnalyzing(true);
       try {
         const result = await aiService.visualSearchEyeglass(base64);
-        if (result.analysis) {
-          if (result.analysis.detectedBrand) setBrand(result.analysis.detectedBrand);
-          if (result.analysis.shape) setShape(result.analysis.shape as FrameShape);
-          if (result.analysis.color) setColor(result.analysis.color);
-          if (result.analysis.frameType) setMaterial(result.analysis.frameType as FrameMaterial);
+        const analysis = result.analysis;
+        let applied = false;
+        if (analysis?.detectedBrand) {
+          setBrand(analysis.detectedBrand);
+          applied = true;
+        }
+        if (analysis?.shape && analysis.shape.trim()) {
+          setShape(analysis.shape as FrameShape);
+          applied = true;
+        }
+        if (analysis?.color && analysis.color.trim()) {
+          setColor(analysis.color);
+          applied = true;
+        }
+        if (analysis?.frameType && analysis.frameType.trim()) {
+          setMaterial(analysis.frameType as FrameMaterial);
+          applied = true;
+        }
+        if (applied) {
           setAiSuggestionsReceived(true);
+          setAiMessage('Controlla e correggi le categorie suggerite prima di salvare.');
+        } else {
+          setAiMessage('Analisi automatica non disponibile: la foto è stata conservata. Inserisci o scegli manualmente le categorie.');
         }
       } catch (err) {
         console.error(err);
+        setAiMessage('Analisi automatica non riuscita: la foto è stata conservata. Inserisci o scegli manualmente le categorie.');
       } finally {
         setAiAnalyzing(false);
       }
@@ -158,6 +177,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
+                capture="environment"
                 className="hidden"
                 onChange={handlePhotoUpload}
               />
@@ -189,7 +209,12 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                 {aiSuggestionsReceived && (
                   <div className="mt-2 text-[10px] text-emerald-300 bg-emerald-950/60 p-1.5 rounded border border-emerald-800 flex items-center gap-1">
                     <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Campi precompilati dall'analisi visiva. Puoi modificarli liberamente.</span>
+                    <span>Campi suggeriti dall'analisi visiva. Verificali: la classificazione può essere imprecisa.</span>
+                  </div>
+                )}
+                {!!aiMessage && (
+                  <div className="mt-2 text-[10px] text-amber-200 bg-amber-950/40 p-1.5 rounded border border-amber-800/70">
+                    {aiMessage}
                   </div>
                 )}
               </div>
