@@ -69,20 +69,42 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
         const result = await aiService.visualSearchEyeglass(base64);
         const analysis = result.analysis;
         let applied = false;
-        if (analysis?.detectedBrand) {
-          setBrand(analysis.detectedBrand);
+        if (analysis?.detectedBrand?.trim()) {
+          setBrand(analysis.detectedBrand.trim());
           applied = true;
         }
-        if (analysis?.shape && analysis.shape.trim()) {
-          setShape(analysis.shape as FrameShape);
+
+        // Convert free-form AI descriptions into only the categories supported by the form.
+        const shapeText = analysis?.shape?.toLocaleLowerCase('it') || '';
+        const supportedShape: FrameShape | undefined =
+          shapeText.includes('aviator') || shapeText.includes('goccia') ? 'Aviator' :
+          shapeText.includes('rettang') ? 'Rettangolare' :
+          shapeText.includes('rotond') || shapeText.includes('tond') ? 'Rotondo' :
+          shapeText.includes('squadr') ? 'Squadrato' :
+          shapeText.includes('cat-eye') || shapeText.includes('cateye') || shapeText.includes('occhio di gatto') ? 'Cat-eye' :
+          shapeText.includes('pantograf') ? 'Pantografo' :
+          shapeText.includes('browline') ? 'Browline' :
+          shapeText.includes('oval') ? 'Ovale' : undefined;
+        if (supportedShape) {
+          setShape(supportedShape);
           applied = true;
         }
-        if (analysis?.color && analysis.color.trim()) {
-          setColor(analysis.color);
+
+        if (analysis?.color?.trim()) {
+          setColor(analysis.color.trim());
           applied = true;
         }
-        if (analysis?.frameType && analysis.frameType.trim()) {
-          setMaterial(analysis.frameType as FrameMaterial);
+
+        const materialText = analysis?.frameType?.toLocaleLowerCase('it') || '';
+        const supportedMaterial: FrameMaterial | undefined =
+          materialText.includes('titanio') ? 'Titanio' :
+          materialText.includes('acetato') ? 'Acetato' :
+          materialText.includes('legno') ? 'Legno' :
+          materialText.includes('rimless') || materialText.includes('a giorno') || materialText.includes('senza montatura') ? 'A giorno' :
+          materialText.includes('misto') || materialText.includes('nylor') ? 'Misto' :
+          materialText.includes('metallo') || materialText.includes('metal') ? 'Metallo' : undefined;
+        if (supportedMaterial) {
+          setMaterial(supportedMaterial);
           applied = true;
         }
         if (applied) {
@@ -167,12 +189,18 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
           {/* Section 26 & 27: Photo & AI Assistant Banner */}
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative w-full sm:w-48 aspect-video sm:aspect-square rounded-xl overflow-hidden bg-slate-950 border border-teal-800/60 flex-shrink-0 flex items-center justify-center group">
-              <img
-                src={photoUrl}
-                alt="Anteprima"
-                className="w-full h-full object-cover"
-                referrerPolicy="no-referrer"
-              />
+              {photoUrl ? (
+                <img
+                  src={photoUrl}
+                  alt="Anteprima della foto dell'occhiale"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center gap-2 p-4 text-center text-slate-400">
+                  <Camera className="w-8 h-8 text-teal-400" />
+                  <span className="text-[11px]">Nessuna foto selezionata</span>
+                </div>
+              )}
               <input
                 ref={fileInputRef}
                 type="file"
