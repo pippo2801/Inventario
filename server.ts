@@ -102,13 +102,13 @@ app.post('/api/ai/visual-search', async (req, res) => {
     const ai = getGeminiClient();
     if (!ai) {
       return res.json({
-        shape: 'Aviator / Goccia',
-        color: 'Nero / Metallo',
-        frameType: 'Cerchiato Metallo',
+        shape: '',
+        color: '',
+        frameType: '',
         detectedBrand: null,
         detectedModelOrCode: null,
         confidence: 'Bassa',
-        stimaIaDetails: 'Analisi locale (Modalità Offline/Chiave API non configurata). Stima visiva orientativa.',
+        stimaIaDetails: 'Analisi IA non disponibile: GEMINI_API_KEY non configurata. Nessuna categoria è stata indovinata; compilare manualmente.',
       });
     }
 
@@ -250,13 +250,13 @@ app.post('/api/ai/ocr-codice-fiscale', async (req, res) => {
     const ai = getGeminiClient();
     if (!ai) {
       return res.json({
-        codiceFiscale: 'RSSMRA80A01H501U',
-        cognome: 'ROSSI',
-        nome: 'MARIO',
-        dataNascita: '1980-01-01',
-        comuneNascita: 'ROMA',
-        sesso: 'M',
-        confidence: 'Simulazione Offline',
+        codiceFiscale: '',
+        cognome: '',
+        nome: '',
+        dataNascita: '',
+        comuneNascita: '',
+        sesso: '',
+        confidence: 'OCR non eseguito: GEMINI_API_KEY non configurata. Nessun dato personale è stato simulato; acquisire la tessera con OCR locale o inserire i dati manualmente.',
       });
     }
 
