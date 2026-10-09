@@ -787,6 +787,13 @@ class DatabaseService {
   }
 
   public importBackupJson(jsonString: string): { success: boolean; message: string } {
+    const storageKeys = [
+      'organization', 'users', 'currentUser', 'eyeglasses', 'clients',
+      'prescriptions', 'sales', 'auditLogs', 'notifications',
+    ];
+    const previousValues = new Map<string, string | null>();
+    const writtenKeys: string[] = [];
+
     try {
       const data = JSON.parse(jsonString);
       if (
@@ -804,42 +811,72 @@ class DatabaseService {
         };
       }
 
-      // Validate the whole backup before changing in-memory state or local storage.
       const restoredUsers = data.users as User[];
       if (restoredUsers.length === 0) {
         return { success: false, message: 'Il backup non contiene utenti validi. Nessun dato è stato modificato.' };
       }
 
-      this.organization = data.organization || initialOrganization;
-      this.users = restoredUsers;
-      this.currentUser =
+      const restoredOrganization = data.organization || initialOrganization;
+      const restoredCurrentUser =
         restoredUsers.find((user) => user.id === data.currentUser?.id) ||
         restoredUsers[0];
+      const restoredNotifications = Array.isArray(data.notifications) ? data.notifications : [];
+      const values: Record<string, unknown> = {
+        organization: restoredOrganization,
+        users: restoredUsers,
+        currentUser: restoredCurrentUser,
+        eyeglasses: data.eyeglasses,
+        clients: data.clients,
+        prescriptions: data.prescriptions,
+        sales: data.sales,
+        auditLogs: data.auditLogs,
+        notifications: restoredNotifications,
+      };
+
+      // Stage the old values and write/verify every key before changing in-memory state.
+      for (const key of storageKeys) {
+        previousValues.set(key, localStorage.getItem(STORAGE_PREFIX + key));
+      }
+      for (const key of storageKeys) {
+        const serialized = JSON.stringify(values[key]);
+        localStorage.setItem(STORAGE_PREFIX + key, serialized);
+        if (localStorage.getItem(STORAGE_PREFIX + key) !== serialized) {
+          throw new Error('Verifica della scrittura fallita per ' + key);
+        }
+        writtenKeys.push(key);
+      }
+
+      this.organization = restoredOrganization;
+      this.users = restoredUsers;
+      this.currentUser = restoredCurrentUser;
       this.eyeglasses = data.eyeglasses;
       this.clients = data.clients;
       this.prescriptions = data.prescriptions;
       this.sales = data.sales;
       this.auditLogs = data.auditLogs;
-      this.notifications = Array.isArray(data.notifications) ? data.notifications : [];
-
-      this.persist('organization', this.organization);
-      this.persist('users', this.users);
-      this.persist('currentUser', this.currentUser);
-      this.persist('eyeglasses', this.eyeglasses);
-      this.persist('clients', this.clients);
-      this.persist('prescriptions', this.prescriptions);
-      this.persist('sales', this.sales);
-      this.persist('auditLogs', this.auditLogs);
-      this.persist('notifications', this.notifications);
+      this.notifications = restoredNotifications;
 
       this.addAuditLog('Backup', 'RESTORE-' + Date.now(), 'MODIFICA', 'Ripristinato backup manuale dei dati');
       this.notify();
 
-      return { success: true, message: 'Backup ripristinato. Verificare conteggi e dati principali prima di riprendere il lavoro.' };
+      return { success: true, message: 'Backup ripristinato e scritture verificate. Controllare comunque i conteggi e alcuni dati prima di riprendere il lavoro.' };
     } catch (e) {
+      // If any write fails, restore the previous storage values so we do not leave a mixed backup.
+      for (const key of writtenKeys.reverse()) {
+        try {
+          const previous = previousValues.get(key);
+          if (previous === null || previous === undefined) {
+            localStorage.removeItem(STORAGE_PREFIX + key);
+          } else {
+            localStorage.setItem(STORAGE_PREFIX + key, previous);
+          }
+        } catch (rollbackError) {
+          console.error('Errore durante il ripristino dei dati precedenti per ' + key, rollbackError);
+        }
+      }
       return {
         success: false,
-        message: 'Errore di lettura del backup: ' + (e instanceof Error ? e.message : String(e)) + '. Nessun ripristino completato.',
+        message: 'Ripristino non completato: ' + (e instanceof Error ? e.message : String(e)) + '. I dati in memoria non sono stati sostituiti; verificare lo spazio disponibile e riprovare.',
       };
     }
   }
