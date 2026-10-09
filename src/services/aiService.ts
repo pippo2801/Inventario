@@ -38,10 +38,10 @@ function fiscalCodeChecksumIsValid(code: string): boolean {
   for (let i = 0; i < 15; i += 1) {
     const char = code[i];
     if (i % 2 === 0) {
-      if (/\\d/.test(char)) sum += CF_DIGIT_ODD_VALUES[Number(char)];
+      if (/\d/.test(char)) sum += CF_DIGIT_ODD_VALUES[Number(char)];
       else if (char in CF_LETTER_VALUES) sum += CF_LETTER_VALUES[char];
       else return false;
-    } else if (/\\d/.test(char)) {
+    } else if (/\d/.test(char)) {
       sum += Number(char);
     } else if (/[A-Z]/.test(char)) {
       sum += char.charCodeAt(0) - 65;
@@ -66,7 +66,7 @@ function extractFiscalCode(text: string): { code: string; checksumValid: boolean
       return digitFixes[char] || char;
     });
     const code = candidate.join('');
-    if (/^[A-Z]{6}\\d{2}[A-Z]\\d{2}[A-Z]\\d{3}[A-Z]$/.test(code)) {
+    if (/^[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]$/.test(code)) {
       candidates.push(code);
     }
   }
