@@ -6,8 +6,6 @@ on:
       - main
       - 'audit/**'
   pull_request:
-    branches:
-      - main
 
 jobs:
   web-build:
