@@ -21,6 +21,32 @@ interface AddProductModalProps {
   onAdded: (eyeglass: Eyeglass) => void;
 }
 
+// Reduce camera images before putting them in local app storage.
+const optimizeProductPhoto = (source: string): Promise<string> =>
+  new Promise((resolve) => {
+    const image = new Image();
+    image.onload = () => {
+      const maxDimension = 900;
+      const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth, image.naturalHeight));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+      const context = canvas.getContext('2d');
+      if (!context) {
+        resolve(source);
+        return;
+      }
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      try {
+        resolve(canvas.toDataURL('image/jpeg', 0.72));
+      } catch {
+        resolve(source);
+      }
+    };
+    image.onerror = () => resolve(source);
+    image.src = source;
+  });
+
 export const AddProductModal: React.FC<AddProductModalProps> = ({
   isOpen,
   onClose,
@@ -58,7 +84,8 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
 
     const reader = new FileReader();
     reader.onload = async () => {
-      const base64 = reader.result as string;
+      const original = reader.result as string;
+      const base64 = await optimizeProductPhoto(original);
       setPhotoUrl(base64);
       setAiSuggestionsReceived(false);
       setAiMessage('');
