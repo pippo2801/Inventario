@@ -89,7 +89,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
 
     if (!isValidItalianFiscalCode(normalizedFiscalCode)) {
       const proceed = window.confirm(
-        'Il codice fiscale non supera il controllo formale. Potrebbe esserci un errore OCR o di digitazione. Vuoi ricontrollarlo prima di salvare? Premi Annulla per tornare al campo.'
+        'Il codice fiscale non supera il controllo formale. Potrebbe esserci un errore OCR o di digitazione. Premi OK per salvare comunque dopo averlo verificato sulla tessera, oppure Annulla per correggerlo.'
       );
       if (!proceed) return;
     }
