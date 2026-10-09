@@ -322,14 +322,14 @@ app.post('/api/ai/ocr-prescription', async (req, res) => {
     const ai = getGeminiClient();
     if (!ai) {
       return res.json({
-        doctorOrOptometrist: 'Dott. Oculista (Rilevato)',
-        date: new Date().toISOString().slice(0, 10),
-        od: { sph: -2.25, cyl: -0.50, ax: 90, add: 0.0 },
-        os: { sph: -2.00, cyl: -0.75, ax: 85, add: 0.0 },
-        pd: { od: 31.5, os: 31.5, total: 63.0 },
-        mountingHeight: 21.0,
-        notes: 'Dati rilevati da ricetta. Verificare prima di confermare.',
-        confidence: 'Simulazione Offline',
+        doctorOrOptometrist: '',
+        date: '',
+        od: { sph: 0, cyl: 0, ax: 0, add: 0 },
+        os: { sph: 0, cyl: 0, ax: 0, add: 0 },
+        pd: { od: 0, os: 0, total: 0 },
+        mountingHeight: 0,
+        notes: 'OCR non disponibile: GEMINI_API_KEY non configurata. Nessun dato è stato inventato; inserire i valori manualmente e verificarli prima di salvare.',
+        confidence: 'OCR non eseguito: configurazione IA assente; inserimento manuale richiesto',
       });
     }
 
