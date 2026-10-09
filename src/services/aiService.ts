@@ -474,14 +474,14 @@ class AIService {
       return await res.json();
     } catch (e) {
       return {
-        doctorOrOptometrist: 'Dott. Medico Oculista',
-        date: new Date().toISOString().slice(0, 10),
-        od: { sph: -2.00, cyl: -0.50, ax: 90, add: 0 },
-        os: { sph: -1.75, cyl: -0.75, ax: 85, add: 0 },
-        pd: { od: 31.5, os: 31.5, total: 63.0 },
-        mountingHeight: 21.0,
-        notes: 'Verificare sempre i valori rilevati prima di salvare.',
-        confidence: 'Lettura OCR stimata',
+        doctorOrOptometrist: '',
+        date: '',
+        od: { sph: 0, cyl: 0, ax: 0, add: 0 },
+        os: { sph: 0, cyl: 0, ax: 0, add: 0 },
+        pd: { od: 0, os: 0, total: 0 },
+        mountingHeight: 0,
+        notes: 'OCR non disponibile: nessun dato è stato letto. Inserire i valori manualmente e verificarli prima di salvare.',
+        confidence: 'OCR non disponibile: dati non letti; inserimento manuale richiesto',
       };
     }
   }
