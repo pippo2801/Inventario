@@ -175,14 +175,14 @@ app.post('/api/ai/video-search', async (req, res) => {
     const ai = getGeminiClient();
     if (!ai) {
       return res.json({
-        shape: 'Rettangolare',
-        color: 'Tartarugato',
-        frameType: 'Acetato',
+        shape: '',
+        color: '',
+        frameType: '',
         detectedBrand: null,
         detectedModelOrCode: null,
-        confidence: 'Media',
-        stimaIaDetails: 'Analisi da video: rilevata forma frontale e finitura tartarugata.',
-        usefulFramesCount: Math.min(3, frames.length),
+        confidence: 'Bassa',
+        stimaIaDetails: 'Analisi video non disponibile: GEMINI_API_KEY non configurata. Nessuna categoria è stata indovinata; inserire i dati manualmente.',
+        usefulFramesCount: 0,
       });
     }
 
