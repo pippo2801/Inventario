@@ -30,14 +30,14 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
   const [brand, setBrand] = useState('');
   const [model, setModel] = useState('');
   const [color, setColor] = useState('');
-  const [gender, setGender] = useState<Gender>('Unisex');
-  const [purchasePrice, setPurchasePrice] = useState<number>(65);
-  const [salePrice, setSalePrice] = useState<number>(149);
-  const [location, setLocation] = useState('Espositore Centrale - Ripiano A');
-  const [sku, setSku] = useState(`OPT-${Math.floor(1000 + Math.random() * 9000)}`);
+  const [gender, setGender] = useState<Gender | ''>('');
+  const [purchasePrice, setPurchasePrice] = useState<number>(0);
+  const [salePrice, setSalePrice] = useState<number>(0);
+  const [location, setLocation] = useState('');
+  const [sku, setSku] = useState(`OPT-${Date.now().toString().slice(-8)}`);
   const [supplierCode, setSupplierCode] = useState('');
-  const [shape, setShape] = useState<FrameShape>('Rettangolare');
-  const [material, setMaterial] = useState<FrameMaterial>('Acetato');
+  const [shape, setShape] = useState<FrameShape | ''>('');
+  const [material, setMaterial] = useState<FrameMaterial | ''>('');
   const [isShowcase, setIsShowcase] = useState(false);
   const [isPromo, setIsPromo] = useState(false);
   const [promoPrice, setPromoPrice] = useState<number | undefined>(undefined);
@@ -125,12 +125,30 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
 
   const handleSave = () => {
     if (!brand.trim() || !model.trim() || !location.trim()) {
-      alert('I campi Marca, Modello e Posizione Fisica sono obbligatori.');
+      alert('Marca, Modello e Posizione Fisica sono obbligatori.');
+      return;
+    }
+    if (!gender || !shape || !material) {
+      alert('Seleziona Genere, Forma della montatura e Materiale prima di salvare.');
+      return;
+    }
+    if (!Number.isFinite(purchasePrice) || purchasePrice <= 0 || !Number.isFinite(salePrice) || salePrice <= 0) {
+      alert('Inserisci un costo di acquisto e un prezzo di vendita validi, maggiori di zero.');
+      return;
+    }
+    if (isPromo && (!Number.isFinite(promoPrice ?? salePrice * 0.8) || (promoPrice ?? salePrice * 0.8) <= 0 || (promoPrice ?? salePrice * 0.8) > salePrice)) {
+      alert('Il prezzo promozionale deve essere maggiore di zero e non superiore al prezzo di vendita.');
+      return;
+    }
+
+    const normalizedSku = sku.trim().toUpperCase();
+    if (normalizedSku && db.getEyeglasses(true).some((item) => item.sku.trim().toUpperCase() === normalizedSku)) {
+      alert('Questo SKU è già assegnato a un articolo. Generane uno nuovo o inserisci un codice diverso.');
       return;
     }
 
     const newEyeglass = db.createEyeglass({
-      sku: sku.trim() || `SKU-${Date.now()}`,
+      sku: normalizedSku || `SKU-${Date.now()}`,
       supplierCode: supplierCode.trim() || undefined,
       brand: brand.trim(),
       model: model.trim(),
@@ -260,7 +278,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                 </div>
                 <button
                   type="button"
-                  onClick={() => setSku(`OPT-${Math.floor(1000 + Math.random() * 9000)}`)}
+                  onClick={() => setSku(`OPT-${Date.now().toString().slice(-8)}`)}
                   className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs flex items-center gap-1"
                 >
                   <Barcode className="w-3.5 h-3.5" /> Genera SKU
@@ -330,9 +348,10 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
               <label className="text-[11px] font-semibold text-slate-300 block mb-1">Genere</label>
               <select
                 value={gender}
-                onChange={(e) => setGender(e.target.value as Gender)}
+                onChange={(e) => setGender(e.target.value as Gender | '')}
                 className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-teal-700/50 text-white focus:outline-none"
               >
+                <option value="">Seleziona genere…</option>
                 <option value="Unisex">Unisex</option>
                 <option value="Uomo">Uomo</option>
                 <option value="Donna">Donna</option>
@@ -343,9 +362,10 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
               <label className="text-[11px] font-semibold text-slate-300 block mb-1">Forma Montatura</label>
               <select
                 value={shape}
-                onChange={(e) => setShape(e.target.value as FrameShape)}
+                onChange={(e) => setShape(e.target.value as FrameShape | '')}
                 className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-teal-700/50 text-white focus:outline-none"
               >
+                <option value="">Seleziona forma…</option>
                 <option value="Aviator">Aviator / Goccia</option>
                 <option value="Rettangolare">Rettangolare</option>
                 <option value="Rotondo">Rotondo</option>
@@ -360,9 +380,10 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
               <label className="text-[11px] font-semibold text-slate-300 block mb-1">Materiale</label>
               <select
                 value={material}
-                onChange={(e) => setMaterial(e.target.value as FrameMaterial)}
+                onChange={(e) => setMaterial(e.target.value as FrameMaterial | '')}
                 className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-teal-700/50 text-white focus:outline-none"
               >
+                <option value="">Seleziona materiale…</option>
                 <option value="Metallo">Metallo</option>
                 <option value="Acetato">Acetato</option>
                 <option value="Titanio">Titanio</option>
