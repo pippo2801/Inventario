@@ -1148,27 +1148,40 @@ import { collection, doc, setDoc, getDocs, Timestamp } from 'firebase/firestore'
 import { dbFirestore } from './firebase';
 
 export async function syncWithCloud() {
+  if (!dbFirestore) {
+    const error = new Error(
+      'Sincronizzazione cloud non configurata: collega un progetto Firebase valido prima di sincronizzare.'
+    );
+    console.warn(error.message);
+    return { success: false, error };
+  }
+
   try {
-    const localEyeglasses = JSON.parse(localStorage.getItem('eyeglasses') || '[]');
-    
+    const storageKey = STORAGE_PREFIX + 'eyeglasses';
+    const localEyeglasses = JSON.parse(localStorage.getItem(storageKey) || '[]');
+
     for (const item of localEyeglasses) {
-      await setDoc(doc(dbFirestore, 'eyeglasses', item.id), {
-        ...item,
-        updatedAt: Timestamp.now()
-      }, { merge: true });
+      await setDoc(
+        doc(dbFirestore, 'eyeglasses', item.id),
+        { ...item, updatedAt: Timestamp.now() },
+        { merge: true }
+      );
     }
 
     const querySnapshot = await getDocs(collection(dbFirestore, 'eyeglasses'));
     const cloudEyeglasses: any[] = [];
-    querySnapshot.forEach((doc) => {
-      cloudEyeglasses.push(doc.data());
+    querySnapshot.forEach((snapshotDoc) => {
+      cloudEyeglasses.push(snapshotDoc.data());
     });
 
     if (cloudEyeglasses.length > 0) {
-      localStorage.setItem('eyeglasses', JSON.stringify(cloudEyeglasses));
+      localStorage.setItem(storageKey, JSON.stringify(cloudEyeglasses));
     }
 
-    const syncTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const syncTime = new Date().toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
     localStorage.setItem('lastSyncTime', syncTime);
     return { success: true, time: syncTime };
   } catch (error) {
