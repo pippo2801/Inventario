@@ -127,7 +127,9 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   const handleCfCameraCapture = async () => {
     try {
       const photo = await CapacitorCamera.getPhoto({
-        quality: 90,
+        quality: 70,
+        width: 1280,
+        height: 1280,
         allowEditing: false,
         resultType: CameraResultType.DataUrl,
         source: CameraSource.Camera,
