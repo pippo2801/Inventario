@@ -1,6 +1,6 @@
 # Studio Ottico Di Pietro - Gestionale & AI Multimodale
 
-Sistema gestionale e di intelligenza artificiale multimodale sviluppato per lo **Studio Ottico Di Pietro**, ottimizzato per l'utilizzo su dispositivi mobili, tablet e postazioni desktop del punto vendita.
+Sistema gestionale per lo **Studio Ottico Di Pietro**, basato su React, TypeScript, Vite, Capacitor e un archivio locale offline-first. Le funzionalità cloud e quelle che richiedono credenziali reali sono da configurare prima dell'uso operativo.
 
 ---
 
@@ -44,7 +44,7 @@ Sistema gestionale e di intelligenza artificiale multimodale sviluppato per lo *
 
 ## 🛠️ Stack Tecnologico
 
-- **Frontend**: React 18, TypeScript, Tailwind CSS, Lucide Icons
+- **Frontend**: React 19, TypeScript, Tailwind CSS, Lucide Icons
 - **Backend / API**: Node.js, Express, tsx, esbuild
 - **Intelligenza Artificiale**: Google Gemini Multimodal API (`@google/genai`) con fallback euristico locale
 - **Build Tool**: Vite
@@ -85,3 +85,35 @@ Sistema gestionale e di intelligenza artificiale multimodale sviluppato per lo *
 ---
 
 *Sviluppato per lo Studio Ottico Di Pietro.*
+
+
+## 📦 Build Android (Capacitor)
+
+Da PC con Android Studio e JDK 21:
+
+```bash
+npm ci
+npm run lint
+npm run build
+npx cap sync android
+```
+
+Poi apri la cartella `android` in Android Studio oppure esegui:
+- Windows PowerShell: `android\\gradlew.bat assembleDebug`
+- Linux/macOS: `cd android && ./gradlew assembleDebug`
+
+Da Termux, se la configurazione Gradle locale non è già impostata, esegui una sola volta dalla cartella del progetto:
+
+```bash
+bash scripts/setup-termux-gradle.sh
+```
+
+Poi esegui `npm ci`, `npm run lint`, `npm run build`, `npx cap sync android` e `cd android && ./gradlew assembleDebug`.
+
+L'APK debug viene generato in `android/app/build/outputs/apk/debug/app-debug.apk`. La compilazione riuscita non sostituisce il collaudo dell'app sul telefono.
+
+## ⚠️ Stato delle integrazioni
+
+- Le API AI avanzate richiedono `GEMINI_API_KEY`; in assenza della chiave alcune funzioni usano fallback locali e l'OCR ricetta non inventa più gradazioni.
+- Firebase è disattivato finché non vengono inserite le impostazioni reali e definite le regole di sicurezza.
+- Prima dell'uso con dati reali dei clienti, verificare backup, permessi, privacy e recupero dei dati su almeno due dispositivi.
