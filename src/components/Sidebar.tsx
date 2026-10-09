@@ -424,13 +424,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="border-t border-[#e1d9d0] bg-[#f3eee7]">
           <div className="px-4 py-2.5 flex items-center justify-between text-[10px] text-[#7d746c]">
             <div className="flex items-center gap-1.5">
-              {syncStatus.state === 'offline' ? (
+              {syncStatus.state === 'offline' || syncStatus.state === 'local_only' ? (
                 <WifiOff className="w-3.5 h-3.5 text-[#a87555]" />
               ) : (
                 <RefreshCw className="w-3.5 h-3.5 text-[#8b5360]" />
               )}
               <span>
-                {syncStatus.state === 'offline'
+                {syncStatus.state === 'local_only'
+                  ? 'Cloud non configurato'
+                  : syncStatus.state === 'offline'
                   ? 'Modalità offline'
                   : syncStatus.state === 'syncing'
                   ? 'Sincronizzazione…'
@@ -438,16 +440,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </span>
             </div>
 
-            <button
-              onClick={() =>
-                syncStatus.state === 'offline'
-                  ? db.toggleOfflineMode()
-                  : db.triggerSyncSimulation()
-              }
-              className="text-[#8b5360] font-semibold hover:underline"
-            >
-              {syncStatus.state === 'offline' ? 'Online' : 'Sincronizza'}
-            </button>
+            {syncStatus.state === 'offline' ? (
+              <button
+                onClick={() => db.toggleOfflineMode()}
+                className="text-[#8b5360] font-semibold hover:underline"
+              >
+                Ritorna locale
+              </button>
+            ) : (
+              <span className="text-[#8b5360] font-semibold">Solo dispositivo</span>
+            )}
           </div>
 
           {/* Settings ALWAYS visible */}
