@@ -423,7 +423,9 @@ class AIService {
         }
 
         const day = dVal < 10 ? '0' + dVal : String(dVal);
-        if (month && dVal >= 1 && dVal <= 31) {\n          dataNascita = `${year}-${month}-${day}`;\n        }
+        if (month && dVal >= 1 && dVal <= 31) {
+          dataNascita = `${year}-${month}-${day}`;
+        }
       }
 
       return {
