@@ -52,6 +52,11 @@ function fiscalCodeChecksumIsValid(code: string): boolean {
   return CF_CHECK_LETTERS[sum % 26] === code[15];
 }
 
+export function isValidItalianFiscalCode(value: string): boolean {
+  const code = value.toUpperCase().replace(/\\s/g, '');
+  return /^[A-Z]{6}\\d{2}[A-Z]\\d{2}[A-Z]\\d{3}[A-Z]$/.test(code) && fiscalCodeChecksumIsValid(code);
+}
+
 function extractFiscalCode(text: string): { code: string; checksumValid: boolean } | null {
   const normalized = text.toUpperCase().replace(/[^A-Z0-9]/g, '');
   const candidates: string[] = [];
