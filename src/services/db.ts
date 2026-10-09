@@ -52,7 +52,7 @@ class DatabaseService {
     this.auditLogs = this.load('auditLogs', initialAuditLogs);
     this.notifications = this.load('notifications', initialNotifications);
     this.syncStatus = {
-      state: 'synced',
+      state: 'local_only',
       lastSyncTimestamp: new Date().toISOString(),
       pendingChangesCount: 0,
       activeDevice: 'A',
@@ -206,25 +206,16 @@ class DatabaseService {
     };
   }
 
+  // Cloud sync is not configured yet. Never report a simulated operation as a real sync.
   public triggerSyncSimulation(callback?: () => void) {
-    this.syncStatus.state = 'syncing';
+    this.syncStatus.state = 'local_only';
     this.notify();
-    setTimeout(() => {
-      this.syncStatus.state = 'synced';
-      this.syncStatus.lastSyncTimestamp = new Date().toISOString();
-      this.syncStatus.pendingChangesCount = 0;
-      this.notify();
-      if (callback) callback();
-    }, 1200);
+    if (callback) callback();
   }
 
   public toggleOfflineMode() {
-    if (this.syncStatus.state === 'offline') {
-      this.triggerSyncSimulation();
-    } else {
-      this.syncStatus.state = 'offline';
-      this.notify();
-    }
+    this.syncStatus.state = this.syncStatus.state === 'offline' ? 'local_only' : 'offline';
+    this.notify();
   }
 
   // --- EYEGLASSES (PRODUCTS) ---
