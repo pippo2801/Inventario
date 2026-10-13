@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import {
   onAuthStateChanged,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
   type User as FirebaseUser,
 } from 'firebase/auth';
-import { AlertCircle, CheckCircle2, Cloud, Loader2, LogIn, LogOut, ShieldCheck } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Cloud, Loader2, LogIn, LogOut, ShieldCheck, KeyRound } from 'lucide-react';
 import { firebaseAuth } from '../services/firebase';
 
 function friendlyAuthError(error: unknown): string {
@@ -66,6 +67,27 @@ export const FirebaseAccountPanel: React.FC = () => {
       await signInWithEmailAndPassword(firebaseAuth, email.trim(), password);
       setPassword('');
       setSuccessMessage('Accesso Firebase effettuato. I dati dell’app restano salvati localmente.');
+    } catch (error) {
+      setErrorMessage(friendlyAuthError(error));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    const normalizedEmail = email.trim();
+    if (!normalizedEmail) {
+      setErrorMessage('Inserisci prima l’indirizzo email per ricevere il link di ripristino.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await sendPasswordResetEmail(firebaseAuth, normalizedEmail);
+      setSuccessMessage('Se l’indirizzo è registrato, riceverai un’email con le istruzioni per reimpostare la password.');
     } catch (error) {
       setErrorMessage(friendlyAuthError(error));
     } finally {
@@ -154,6 +176,17 @@ export const FirebaseAccountPanel: React.FC = () => {
               placeholder="Password Firebase"
             />
           </label>
+          <div className="sm:col-span-2 -mt-1">
+            <button
+              type="button"
+              onClick={handlePasswordReset}
+              disabled={submitting}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-teal-300 underline-offset-4 hover:underline disabled:opacity-50"
+            >
+              <KeyRound className="h-3.5 w-3.5" />
+              Password dimenticata?
+            </button>
+          </div>
           <div className="sm:col-span-2">
             <button
               type="submit"
