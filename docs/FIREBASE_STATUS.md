@@ -9,6 +9,7 @@ App web: `1:948603878645:web:0f13ee540ca66a6e8659bc`
 - Esportazione delle istanze `firebaseApp`, `firebaseAuth` e `dbFirestore`.
 - Inizializzazione riutilizzabile durante hot reload, evitando di registrare più app Firebase.
 - Pannello facoltativo di accesso/uscita email-password in Impostazioni, con stato sessione Firebase ed errori leggibili.
+- Recupero password tramite email dal pannello, senza creare account né modificare l'utente locale.
 - Nessun cambiamento alle regole Firestore e nessuna sincronizzazione automatica attivata.
 
 ## Non ancora abilitato
@@ -22,7 +23,7 @@ App web: `1:948603878645:web:0f13ee540ca66a6e8659bc`
 
 ## Verifica dell'accesso
 
-Il pannello `FirebaseAccountPanel` usa Firebase Authentication email/password. Non crea account e non modifica il profilo dell'utente locale. La sessione Firebase è separata dall'utente selezionato nel gestionale. Prima di usare Google Sign-In su Android occorre verificare il package nativo registrato in Firebase (la configurazione attuale registra `com.example.react_example`, mentre Capacitor dichiara `com.studiodipietro.inventario`).
+Il pannello `FirebaseAccountPanel` usa Firebase Authentication email/password. Non crea account e non modifica il profilo dell'utente locale. La sessione Firebase è separata dall'utente selezionato nel gestionale. La build Android di debug è stata compilata con successo nel workflow GitHub Actions. Prima di usare Google Sign-In nativo occorre registrare/verificare in Firebase un'app Android con package `com.studiodipietro.inventario`: il progetto Firebase attualmente elenca `com.example.react_example`, che non corrisponde all'`applicationId` in `android/app/build.gradle`.
 
 ## Sicurezza
 
