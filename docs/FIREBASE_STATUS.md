@@ -8,16 +8,21 @@ App web: `1:948603878645:web:0f13ee540ca66a6e8659bc`
 - Inizializzazione modulare Firebase compatibile con Vite e Capacitor.
 - Esportazione delle istanze `firebaseApp`, `firebaseAuth` e `dbFirestore`.
 - Inizializzazione riutilizzabile durante hot reload, evitando di registrare più app Firebase.
+- Pannello facoltativo di accesso/uscita email-password in Impostazioni, con stato sessione Firebase ed errori leggibili.
 - Nessun cambiamento alle regole Firestore e nessuna sincronizzazione automatica attivata.
 
 ## Non ancora abilitato
 
-- Flusso di accesso/uscita Firebase collegato all'interfaccia.
+- Collegamento sicuro tra UID Firebase e utente/ruolo gestionale: il pannello mostra l'identità autenticata ma non la considera un'autorizzazione gestionale.
 - Collegamento sicuro tra UID Firebase e ruolo applicativo.
 - Schema cloud per organizzazione e tutte le entità gestionali.
 - Regole Firestore basate su autenticazione, organizzazione e ruoli.
 - Migrazione iniziale, sincronizzazione bidirezionale, modalità offline e risoluzione conflitti.
 - Test end-to-end web/Android e verifica delle regole.
+
+## Verifica dell'accesso
+
+Il pannello `FirebaseAccountPanel` usa Firebase Authentication email/password. Non crea account e non modifica il profilo dell'utente locale. La sessione Firebase è separata dall'utente selezionato nel gestionale. Prima di usare Google Sign-In su Android occorre verificare il package nativo registrato in Firebase (la configurazione attuale registra `com.example.react_example`, mentre Capacitor dichiara `com.studiodipietro.inventario`).
 
 ## Sicurezza
 
