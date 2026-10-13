@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { db } from '../services/db';
+import { FirebaseAccountPanel } from '../components/FirebaseAccountPanel';
 import {
   Settings,
   Users,
@@ -158,6 +159,8 @@ export const SettingsView: React.FC = () => {
           </p>
         </div>
       </div>
+
+      <FirebaseAccountPanel />
 
       {/* Tabs */}
       <div className="flex gap-2 border-b border-slate-800 text-xs font-semibold overflow-x-auto">
