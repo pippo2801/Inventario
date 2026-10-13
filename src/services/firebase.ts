@@ -18,6 +18,7 @@ const firebaseConfig = {
   storageBucket: 'inventario-studio.firebasestorage.app',
   messagingSenderId: '948603878645',
   appId: '1:948603878645:web:0f13ee540ca66a6e8659bc',
+  measurementId: 'G-7DE2S1YD16',
 };
 
 export const firebaseApp = getApps().length > 0
