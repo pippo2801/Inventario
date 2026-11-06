@@ -345,8 +345,28 @@ class AIService {
       const cfMatch = normalizedText.match(cfRegex);
       const codiceFiscale = cfMatch ? cfMatch[0].toUpperCase() : '';
 
-      let sesso = '';
+      // Extract structured fields from raw OCR text (Italian health card format)
+      const extractField = (fieldName: string, textToSearch: string): string => {
+        const regex = new RegExp(`${fieldName}[\s:]*([A-ZÀ-ÿ\s\-']+)`, 'i');
+        const match = textToSearch.match(regex);
+        return match ? match[1].trim().toUpperCase() : '';
+      };
+
+      const cognome = extractField('COGNOME', text) || extractField('COGNOME E NOME', text).split(' ')[0] || '';
+      const nome = extractField('NOME', text) || '';
+      const comuneNascita = extractField('COMUNE', text) || extractField('LUOGO NASCITA', text) || extractField('NASCITA COMUNE', text) || '';
+      const sessoFromText = extractField('SESSO', text).charAt(0) || '';
+
+      let sesso = sessoFromText;
       let dataNascita = '';
+
+      // Also try to extract date of birth from text if not in CF
+      const dateMatch = text.match(/(\d{1,2})[\/\-\.]\s*(\d{1,2})[\/\-\.]\s*(\d{4})/);
+      let dataFromText = '';
+      if (dateMatch) {
+        const [, day, month, year] = dateMatch;
+        dataFromText = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      }
 
       if (codiceFiscale.length === 16) {
         const yyStr = codiceFiscale.substring(6, 8);
@@ -373,14 +393,17 @@ class AIService {
 
         const day = dVal < 10 ? '0' + dVal : String(dVal);
         dataNascita = `${year}-${month}-${day}`;
+      } else if (dataFromText) {
+        // Fallback: use date extracted from text
+        dataNascita = dataFromText;
       }
 
       return {
         codiceFiscale,
-        cognome: '',
-        nome: '',
+        cognome,
+        nome,
         dataNascita,
-        comuneNascita: '',
+        comuneNascita,
         sesso,
         confidence: codiceFiscale
           ? 'Codice Fiscale estratto e decodificato'
