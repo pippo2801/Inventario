@@ -269,8 +269,15 @@ describe('DatabaseService', () => {
         receiptReference: 'RCPT-1',
       });
       
-      // Restore
-      db.restoreEyeglassFromSale(eyeglass.id);
+      // Restore first sale - should work (only one active sale)
+      const restored1 = db.restoreEyeglassFromSale(eyeglass.id);
+      expect(restored1).toBeDefined();
+      expect(restored1!.status).toBe('Disponibile');
+      
+      // Verify sale1 was cancelled
+      let allSales = db.getSales(true);
+      let s1 = allSales.find(s => s.id === sale1.id);
+      expect(s1?.deletedAt).toBeDefined();
       
       // Second sale (same product sold again)
       const sale2 = db.executeFastSale({
@@ -281,14 +288,15 @@ describe('DatabaseService', () => {
         receiptReference: 'RCPT-2',
       });
       
-      // Restore again - should cancel the MOST RECENT sale (sale2)
-      const restored = db.restoreEyeglassFromSale(eyeglass.id);
+      // Restore second sale - MUST specify saleId since now there's ambiguity
+      // (sale1 is cancelled, sale2 is active - only one active, so this should work)
+      const restored2 = db.restoreEyeglassFromSale(eyeglass.id, sale2.id);
       
-      expect(restored).toBeDefined();
+      expect(restored2).toBeDefined();
       
-      // sale2 should be cancelled, sale1 should remain cancelled from first restore
-      const allSales = db.getSales(true);
-      const s1 = allSales.find(s => s.id === sale1.id);
+      // sale2 should be cancelled
+      allSales = db.getSales(true);
+      s1 = allSales.find(s => s.id === sale1.id);
       const s2 = allSales.find(s => s.id === sale2.id);
       
       expect(s1?.deletedAt).toBeDefined(); // Still cancelled
@@ -326,7 +334,7 @@ describe('DatabaseService', () => {
         receiptReference: 'RCPT-AUDIT',
       });
       
-      db.restoreEyeglassFromSale(eyeglass.id);
+      db.restoreEyeglassFromSale(eyeglass.id, sale.id);
       
       const auditLogs = db.getAuditLogs();
       const restoreLog = auditLogs.find(log => 

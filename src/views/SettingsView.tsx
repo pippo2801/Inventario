@@ -314,11 +314,11 @@ export const SettingsView: React.FC = () => {
 
             <div className="flex flex-wrap gap-2 pt-2">
               <button
-                onClick={() => db.triggerSyncSimulation()}
+                onClick={() => db.toggleOfflineMode()}
                 className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-semibold text-xs flex items-center gap-1.5 transition-colors"
               >
                 <RefreshCw className="w-4 h-4" />
-                <span>Forza Sincronizzazione Adesso</span>
+                <span>{syncStatus.state === 'offline' ? 'Torna Online' : 'Simula Offline'}</span>
               </button>
 
               <button

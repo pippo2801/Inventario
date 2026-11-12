@@ -206,21 +206,12 @@ class DatabaseService {
     };
   }
 
-  public triggerSyncSimulation(callback?: () => void) {
-    this.syncStatus.state = 'syncing';
-    this.notify();
-    setTimeout(() => {
+  public toggleOfflineMode() {
+    if (this.syncStatus.state === 'offline') {
       this.syncStatus.state = 'synced';
       this.syncStatus.lastSyncTimestamp = new Date().toISOString();
       this.syncStatus.pendingChangesCount = 0;
       this.notify();
-      if (callback) callback();
-    }, 1200);
-  }
-
-  public toggleOfflineMode() {
-    if (this.syncStatus.state === 'offline') {
-      this.triggerSyncSimulation();
     } else {
       this.syncStatus.state = 'offline';
       this.notify();
@@ -465,19 +456,45 @@ class DatabaseService {
     return sale;
   }
 
-  public restoreEyeglassFromSale(productId: string): Eyeglass | undefined {
+  public restoreEyeglassFromSale(productId: string, saleId?: string): Eyeglass | undefined {
     const product = this.getEyeglassById(productId);
 
     if (!product) {
       throw new Error('Occhiale non trovato');
     }
 
-    // Find the most recent sale for this product (not already deleted)
-    const productSales = this.sales
-      .filter((s) => s.productId === productId && s.deletedAt === null)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    // If saleId is provided, use that exact sale; otherwise try to identify the correct one
+    let saleToCancel: Sale | undefined;
 
-    const latestSale = productSales[0];
+    if (saleId) {
+      // Exact sale specified - verify it belongs to this product and is active
+      saleToCancel = this.sales.find((s) => s.id === saleId && s.productId === productId && s.deletedAt === null);
+      if (!saleToCancel) {
+        throw new Error(`Vendita ${saleId} non trovata, non associata a questo prodotto, o già annullata`);
+      }
+    } else {
+      // No saleId provided - try to identify the correct sale
+      const productSales = this.sales
+        .filter((s) => s.productId === productId && s.deletedAt === null)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+      if (productSales.length === 0) {
+        // No active sales found - product might be marked as Venduto without a sale record
+        // Restore without cancelling a sale
+        console.warn(`Ripristino prodotto ${productId}: nessuna vendita attiva associata`);
+      } else if (productSales.length === 1) {
+        // Exactly one sale - safe to cancel
+        saleToCancel = productSales[0];
+      } else {
+        // Multiple active sales - AMBIGUOUS: cannot determine which to cancel
+        // Abort without modifying data
+        const saleNumbers = productSales.map(s => s.saleNumber).join(', ');
+        throw new Error(
+          `Impossibile ripristinare: ${productSales.length} vendite attive per questo prodotto (${saleNumbers}). ` +
+          `Specificare l'ID della vendita da annullare.`
+        );
+      }
+    }
 
     const oldStatus = product.status;
 
@@ -491,15 +508,15 @@ class DatabaseService {
     this.persist('eyeglasses', this.eyeglasses);
 
     // If there's an associated sale, mark it as cancelled (soft delete)
-    if (latestSale) {
-      latestSale.deletedAt = new Date().toISOString();
+    if (saleToCancel) {
+      saleToCancel.deletedAt = new Date().toISOString();
       this.persist('sales', this.sales);
 
       this.addAuditLog(
         'Vendita',
-        latestSale.id,
+        saleToCancel.id,
         'ANNULLAMENTO',
-        `Vendita annullata per ripristino prodotto: ${product.brand} ${product.model} (Scontrino: ${latestSale.saleNumber})`,
+        `Vendita annullata per ripristino prodotto: ${product.brand} ${product.model} (Scontrino: ${saleToCancel.saleNumber})`,
         'Attiva',
         'Annullata'
       );
@@ -509,14 +526,14 @@ class DatabaseService {
       'Vendita',
       product.id,
       'RIPRISTINO_VENDITA',
-      `Occhiale ripristinato da Venduto a Disponibile: ${product.brand} ${product.model}.${latestSale ? ` Vendita ${latestSale.saleNumber} annullata.` : ''}`,
+      `Occhiale ripristinato da Venduto a Disponibile: ${product.brand} ${product.model}.${saleToCancel ? ` Vendita ${saleToCancel.saleNumber} annullata.` : ' Nessuna vendita associata da annullare.'}`,
       `${oldStatus}`,
       'Disponibile'
     );
 
     this.pushNotification(
       `Occhiale ripristinato: ${product.brand} ${product.model}`,
-      `${this.currentUser.name} ha ripristinato ${product.brand} ${product.model} da Venduto a Disponibile.${latestSale ? ` Vendita ${latestSale.saleNumber} annullata.` : ''}`,
+      `${this.currentUser.name} ha ripristinato ${product.brand} ${product.model} da Venduto a Disponibile.${saleToCancel ? ` Vendita ${saleToCancel.saleNumber} annullata.` : ''}`,
       'vendite',
       'inventario',
       product.id

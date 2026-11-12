@@ -74,7 +74,7 @@ export const Header: React.FC<HeaderProps> = ({
           {/* SYNC */}
           <button
             id="btn-sync-status"
-            onClick={() => db.triggerSyncSimulation()}
+            onClick={() => db.toggleOfflineMode()}
             title={`Stato: ${syncLabel}. Clicca per sincronizzare.`}
             aria-label={`Sincronizzazione: ${syncLabel}`}
             className="group flex h-10 items-center gap-2 rounded-full border border-transparent px-2.5 text-[#77716a] transition-all hover:border-[#d2cbc1] hover:bg-white hover:text-[#514d48] sm:px-3"

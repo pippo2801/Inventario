@@ -1,37 +1,53 @@
 /**
  * Utility functions for Italian Codice Fiscale parsing, validation, and normalization.
  * Extracted from AIService for testability and reusability.
+ * 
+ * CF Structure (16 chars):
+ * 0-5: Surname letters (6 chars)
+ * 6-7: Year digits (2 chars)
+ * 8: Month letter (A-T, excluding I,O,Q,U,V)
+ * 9-10: Day digits (2 chars, +40 for female)
+ * 11: Municipality code letter (1 char)
+ * 12-14: Municipality code digits (3 chars)
+ * 15: Check character (1 letter)
  */
 
 // Character normalization map for common OCR errors
-const OCR_CHAR_MAP: Record<string, string> = {
+// Only used in positions where DIGITS are expected
+const OCR_DIGIT_MAP: Record<string, string> = {
   'O': '0', 'Q': '0', 'D': '0',
   'I': '1', 'L': '1', '|': '1',
   'S': '5', 'Z': '2',
   'B': '8', 'G': '6',
-  'U': 'V', // In month codes, U is not valid but V is
+};
+
+// Character normalization map for positions where LETTERS are expected
+const OCR_LETTER_MAP: Record<string, string> = {
+  '0': 'O', '1': 'I', '5': 'S', '8': 'B', '6': 'G', '2': 'Z',
 };
 
 /**
- * Normalizes a string by replacing common OCR character misreads.
- * Only applies to positions where digits are expected in CF.
+ * Normalizes a potential CF string by applying position-specific OCR corrections.
+ * Only replaces chars in positions where the expected type (digit/letter) is known.
  */
-export function normalizeOCRText(text: string): string {
-  return text
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, '')
-    .split('')
-    .map((char, index) => {
-      // In CF, positions 6-7 (year), 9-10 (day), 12-14 (municipality code) should be digits
-      // Position 8 (month) should be a letter A-T
-      // Positions 0-5 (name/surname) should be letters
-      // Position 11 (year check) should be letter
-      // Position 15 (check char) should be letter
-      
-      // For simplicity, apply normalization to all chars that could be confused
-      return OCR_CHAR_MAP[char] || char;
-    })
-    .join('');
+export function normalizeCFString(text: string): string {
+  const cleaned = text.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (cleaned.length !== 16) return cleaned;
+  
+  return cleaned.split('').map((char, index) => {
+    // Positions where digits are expected: 6,7,9,10,12,13,14
+    const digitPositions = new Set([6, 7, 9, 10, 12, 13, 14]);
+    // Positions where letters are expected: 0,1,2,3,4,5,8,11,15
+    const letterPositions = new Set([0, 1, 2, 3, 4, 5, 8, 11, 15]);
+    
+    if (digitPositions.has(index)) {
+      return OCR_DIGIT_MAP[char] || char;
+    }
+    if (letterPositions.has(index)) {
+      return OCR_LETTER_MAP[char] || char;
+    }
+    return char;
+  }).join('');
 }
 
 /**
@@ -40,9 +56,6 @@ export function normalizeOCRText(text: string): string {
  */
 export function validateCodiceFiscaleChecksum(cf: string): boolean {
   if (cf.length !== 16) return false;
-  
-  const oddChars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  const evenChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   
   const oddValues: Record<string, number> = {
     '0': 1, '1': 0, '2': 5, '3': 7, '4': 9, '5': 13, '6': 15, '7': 17, '8': 19, '9': 21,
@@ -73,28 +86,67 @@ export function validateCodiceFiscaleChecksum(cf: string): boolean {
 }
 
 /**
- * Extracts and validates a Codice Fiscale from OCR text.
- * Returns the best candidate or empty string if none found.
+ * Validates if a date is a real calendar date (handles leap years, month lengths).
  */
-export function extractCodiceFiscale(text: string): string {
-  const normalized = normalizeOCRText(text);
+function isValidCalendarDate(year: number, month: number, day: number): boolean {
+  if (month < 1 || month > 12) return false;
+  if (day < 1) return false;
+  
+  const daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  // Leap year check
+  if (month === 2) {
+    const isLeap = (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+    return day <= (isLeap ? 29 : 28);
+  }
+  return day <= daysInMonth[month - 1];
+}
+
+/**
+ * Extracts and validates ALL candidate Codice Fiscale from OCR text.
+ * Returns array of valid candidates (with valid checksum and valid date).
+ */
+export function extractAllCodiceFiscaleCandidates(text: string): string[] {
+  const normalized = text.toUpperCase().replace(/[^A-Z0-9]/g, '');
   const cfRegex = /[A-Z]{6}[0-9L-V]{2}[A-Z][0-9L-V]{2}[A-Z][0-9L-V]{3}[A-Z]/g;
-  const matches = normalized.match(cfRegex) || [];
+  const rawMatches = normalized.match(cfRegex) || [];
   
-  // Filter valid checksums
-  const validMatches = matches.filter(cf => validateCodiceFiscaleChecksum(cf));
+  const candidates: string[] = [];
   
-  if (validMatches.length > 0) {
-    return validMatches[0];
+  for (const match of rawMatches) {
+    // Try with position-specific normalization
+    const normalized = normalizeCFString(match);
+    
+    // Validate checksum
+    if (!validateCodiceFiscaleChecksum(normalized)) continue;
+    
+    // Validate date is real calendar date
+    const parsed = parseDataNascitaFromCF(normalized);
+    if (!parsed) continue;
+    
+    // Validate it's a real calendar date (not just 1-31)
+    const [year, month, day] = parsed.dataNascita.split('-').map(Number);
+    if (!isValidCalendarDate(year, month, day)) continue;
+    
+    candidates.push(normalized);
   }
   
-  // If no valid checksum, return first match anyway (for manual review)
-  return matches[0] || '';
+  // Remove duplicates while preserving order
+  return [...new Set(candidates)];
+}
+
+/**
+ * Extracts the BEST candidate Codice Fiscale from OCR text.
+ * Returns the first valid candidate or empty string if none found.
+ */
+export function extractCodiceFiscale(text: string): string {
+  const candidates = extractAllCodiceFiscaleCandidates(text);
+  return candidates[0] || '';
 }
 
 /**
  * Parses date of birth and gender from Codice Fiscale.
  * Returns { dataNascita: 'YYYY-MM-DD', sesso: 'M'|'F' } or null if invalid.
+ * Includes calendar date validation.
  */
 export function parseDataNascitaFromCF(cf: string): { dataNascita: string; sesso: 'M' | 'F' } | null {
   if (cf.length !== 16) return null;
@@ -125,6 +177,9 @@ export function parseDataNascitaFromCF(cf: string): { dataNascita: string; sesso
   }
   
   if (dVal < 1 || dVal > 31) return null;
+  
+  // Validate calendar date
+  if (!isValidCalendarDate(year, parseInt(month, 10), dVal)) return null;
   
   const day = dVal < 10 ? '0' + dVal : String(dVal);
   const dataNascita = `${year}-${month}-${day}`;
@@ -187,8 +242,9 @@ export function parseHealthCardOCR(text: string): {
   // Extract structured fields from OCR text
   const fields = extractHealthCardFields(text);
   
-  // Extract and normalize CF
-  const codiceFiscale = extractCodiceFiscale(text);
+  // Extract ALL candidates and pick the best
+  const candidates = extractAllCodiceFiscaleCandidates(text);
+  const codiceFiscale = candidates[0] || '';
   
   let sesso = fields.sesso;
   let dataNascita = '';
@@ -202,9 +258,14 @@ export function parseHealthCardOCR(text: string): {
       warnings.push('Codice Fiscale trovato ma data/sesso non decodificabili');
     }
     
-    // Validate checksum
+    // Validate checksum (should always pass if from candidates, but double-check)
     if (!validateCodiceFiscaleChecksum(codiceFiscale)) {
       warnings.push('Codice Fiscale: checksum non valido (possibile errore OCR)');
+    }
+    
+    // Warn if multiple valid candidates found
+    if (candidates.length > 1) {
+      warnings.push(`Attenzione: ${candidates.length} codici fiscali validi rilevati, usato il primo: ${candidates[0]}`);
     }
   } else if (fields.dataNascitaFromText) {
     // Fallback: use date extracted from text
@@ -238,3 +299,6 @@ export function parseHealthCardOCR(text: string): {
     warnings,
   };
 }
+
+// normalizeCFString, validateCodiceFiscaleChecksum, isValidCalendarDate are already exported via 'export function'
+export { isValidCalendarDate };

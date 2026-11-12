@@ -437,11 +437,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             <button
-              onClick={() =>
-                syncStatus.state === 'offline'
-                  ? db.toggleOfflineMode()
-                  : db.triggerSyncSimulation()
-              }
+              onClick={() => db.toggleOfflineMode()}
               className="text-[#8b5360] font-semibold hover:underline"
             >
               {syncStatus.state === 'offline' ? 'Online' : 'Sincronizza'}

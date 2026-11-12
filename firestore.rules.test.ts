@@ -11,6 +11,8 @@ import {
   assertFails,
   assertSucceeds 
 } from '@firebase/rules-unit-testing';
+import * as fs from 'fs';
+import * as path from 'path';
 
 describe('Firestore Security Rules', () => {
   let testEnv: RulesTestEnvironment;
@@ -18,98 +20,14 @@ describe('Firestore Security Rules', () => {
   const PROJECT_ID = 'test-project-' + Date.now();
   
   beforeAll(async () => {
+    // Load the actual firestore.rules file
+    const rulesPath = path.join(__dirname, '..', 'firestore.rules');
+    const rules = fs.readFileSync(rulesPath, 'utf-8');
+    
     testEnv = await initializeTestEnvironment({
       projectId: PROJECT_ID,
       firestore: {
-        rules: `
-          rules_version = '2';
-          
-          service cloud.firestore {
-            match /databases/{database}/documents {
-              function isSignedIn() {
-                return request.auth != null;
-              }
-              
-              function isOwner(userId) {
-                return isSignedIn() && request.auth.uid == userId;
-              }
-              
-              function isAdmin() {
-                return isSignedIn() && 
-                  get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Amministratore';
-              }
-              
-              function isOperatorOrAdmin() {
-                return isSignedIn() && 
-                  (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Amministratore' ||
-                   get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Operatore');
-              }
-
-              match /users/{userId} {
-                allow read: if isOwner(userId) || isAdmin();
-                allow write: if isOwner(userId) || isAdmin();
-              }
-
-              match /organizations/{orgId} {
-                allow read: if isAdmin();
-                allow write: if isAdmin();
-              }
-
-              match /eyeglasses/{eyeglassId} {
-                allow read: if isOperatorOrAdmin();
-                allow create: if isOperatorOrAdmin();
-                allow update: if isOperatorOrAdmin();
-                allow delete: if isAdmin();
-              }
-
-              match /clients/{clientId} {
-                allow read: if isOperatorOrAdmin();
-                allow create: if isOperatorOrAdmin();
-                allow update: if isOperatorOrAdmin();
-                allow delete: if isAdmin();
-              }
-
-              match /prescriptions/{prescriptionId} {
-                allow read: if isOperatorOrAdmin();
-                allow create: if isOperatorOrAdmin();
-                allow update: if isOperatorOrAdmin();
-                allow delete: if isAdmin();
-              }
-
-              match /sales/{saleId} {
-                allow read: if isOperatorOrAdmin();
-                allow create: if isOperatorOrAdmin();
-                allow update: if isAdmin();
-                allow delete: if isAdmin();
-              }
-
-              match /auditLogs/{logId} {
-                allow read: if isOperatorOrAdmin();
-                allow create: if isOperatorOrAdmin();
-                allow update, delete: if false;
-              }
-
-              match /customCategories/{categoryId} {
-                allow read: if isOperatorOrAdmin();
-                allow create, update, delete: if isOperatorOrAdmin();
-              }
-
-              match /settings/{settingId} {
-                allow read: if isOperatorOrAdmin();
-                allow write: if isAdmin();
-              }
-
-              match /syncStatus/{statusId} {
-                allow read: if isOperatorOrAdmin();
-                allow write: if isOperatorOrAdmin();
-              }
-
-              match /{document=**} {
-                allow read, write: if false;
-              }
-            }
-          }
-        `,
+        rules,
       },
     });
   });
@@ -121,29 +39,42 @@ describe('Firestore Security Rules', () => {
   const adminAuth = { uid: 'admin-uid' };
   const operatorAuth = { uid: 'operator-uid' };
   const clientAuth = { uid: 'client-uid' };
+  const otherOrgAdminAuth = { uid: 'other-org-admin-uid' };
   const unauthenticated = null;
 
-  // Helper to set up user documents
+  // Helper to set up user documents with organization membership
   async function setupUsers(db: any) {
+    // Main organization users
     await db.collection('users').doc('admin-uid').set({
       role: 'Amministratore',
       name: 'Admin User',
       email: 'admin@test.com',
+      organizationId: 'org-main',
     });
     await db.collection('users').doc('operator-uid').set({
       role: 'Operatore',
       name: 'Operator User',
       email: 'operator@test.com',
+      organizationId: 'org-main',
     });
     await db.collection('users').doc('client-uid').set({
       role: 'Cliente',
       name: 'Client User',
       email: 'client@test.com',
+      organizationId: 'org-main',
+    });
+    
+    // Different organization admin
+    await db.collection('users').doc('other-org-admin-uid').set({
+      role: 'Amministratore',
+      name: 'Other Org Admin',
+      email: 'admin@other.com',
+      organizationId: 'org-other',
     });
   }
 
-  describe('Users collection', () => {
-    it('allows admin to read all users', async () => {
+  describe('Users collection - Role Protection', () => {
+    it('allows admin to read all users in same org', async () => {
       const db = testEnv.authenticatedContext('admin-uid').firestore();
       await setupUsers(db);
       await assertSucceeds(db.collection('users').doc('operator-uid').get());
@@ -155,7 +86,7 @@ describe('Firestore Security Rules', () => {
       await assertSucceeds(db.collection('users').doc('operator-uid').get());
     });
 
-    it('denies user reading another user', async () => {
+    it('denies user reading another user in same org', async () => {
       const db = testEnv.authenticatedContext('operator-uid').firestore();
       await setupUsers(db);
       await assertFails(db.collection('users').doc('admin-uid').get());
@@ -165,49 +96,245 @@ describe('Firestore Security Rules', () => {
       const db = testEnv.unauthenticatedContext().firestore();
       await assertFails(db.collection('users').doc('admin-uid').get());
     });
-  });
 
-  describe('Eyeglasses collection', () => {
-    it('allows admin to read eyeglasses', async () => {
-      const db = testEnv.authenticatedContext('admin-uid').firestore();
-      await setupUsers(db);
-      await assertSucceeds(db.collection('eyeglasses').doc('eg-1').get());
-    });
-
-    it('allows operator to read eyeglasses', async () => {
+    it('DENIES self-promotion to Amministratore', async () => {
       const db = testEnv.authenticatedContext('operator-uid').firestore();
       await setupUsers(db);
+      // Operator tries to change their own role to Amministratore
+      await assertFails(db.collection('users').doc('operator-uid').update({
+        role: 'Amministratore',
+      }));
+    });
+
+    it('DENIES self-demotion from Amministratore', async () => {
+      const db = testEnv.authenticatedContext('admin-uid').firestore();
+      await setupUsers(db);
+      // Admin tries to change their own role to Operatore
+      await assertFails(db.collection('users').doc('admin-uid').update({
+        role: 'Operatore',
+      }));
+    });
+
+    it('ALLOWS admin to change another user role', async () => {
+      const db = testEnv.authenticatedContext('admin-uid').firestore();
+      await setupUsers(db);
+      // Admin can change operator role
+      await assertSucceeds(db.collection('users').doc('operator-uid').update({
+        role: 'Cliente',
+      }));
+    });
+
+    it('DENIES non-admin creating users', async () => {
+      const db = testEnv.authenticatedContext('operator-uid').firestore();
+      await setupUsers(db);
+      await assertFails(db.collection('users').doc('new-user').set({
+        role: 'Operatore',
+        name: 'New User',
+        email: 'new@test.com',
+        organizationId: 'org-main',
+      }));
+    });
+  });
+
+  describe('Organization Membership Verification', () => {
+    it('allows admin to read own org', async () => {
+      const db = testEnv.authenticatedContext('admin-uid').firestore();
+      await setupUsers(db);
+      await assertSucceeds(db.collection('organizations').doc('org-main').get());
+    });
+
+    it('DENIES admin reading other org', async () => {
+      const db = testEnv.authenticatedContext('admin-uid').firestore();
+      await setupUsers(db);
+      await assertFails(db.collection('organizations').doc('org-other').get());
+    });
+
+    it('DENIES other org admin reading this org', async () => {
+      const db = testEnv.authenticatedContext('other-org-admin-uid').firestore();
+      await setupUsers(db);
+      await assertFails(db.collection('organizations').doc('org-main').get());
+    });
+  });
+
+  describe('Cross-Organization Data Access', () => {
+    it('allows operator to read eyeglasses in own org', async () => {
+      const db = testEnv.authenticatedContext('operator-uid').firestore();
+      await setupUsers(db);
+      await db.collection('eyeglasses').doc('eg-1').set({
+        brand: 'Ray-Ban',
+        model: 'Aviator',
+        salePrice: 150,
+        organizationId: 'org-main',
+      });
       await assertSucceeds(db.collection('eyeglasses').doc('eg-1').get());
     });
 
-    it('allows operator to create eyeglass', async () => {
+    it('DENIES operator reading eyeglasses in other org', async () => {
+      const db = testEnv.authenticatedContext('operator-uid').firestore();
+      await setupUsers(db);
+      await db.collection('eyeglasses').doc('eg-other').set({
+        brand: 'Other Brand',
+        model: 'Other Model',
+        salePrice: 200,
+        organizationId: 'org-other',
+      });
+      await assertFails(db.collection('eyeglasses').doc('eg-other').get());
+    });
+
+    it('DENIES other org admin reading this org eyeglasses', async () => {
+      const db = testEnv.authenticatedContext('other-org-admin-uid').firestore();
+      await setupUsers(db);
+      await assertFails(db.collection('eyeglasses').doc('eg-1').get());
+    });
+
+    it('allows operator to create eyeglass in own org', async () => {
       const db = testEnv.authenticatedContext('operator-uid').firestore();
       await setupUsers(db);
       await assertSucceeds(db.collection('eyeglasses').add({
         brand: 'Ray-Ban',
         model: 'Aviator',
         salePrice: 150,
+        organizationId: 'org-main',
       }));
     });
 
-    it('allows operator to update eyeglass', async () => {
+    it('DENIES operator creating eyeglass in other org', async () => {
       const db = testEnv.authenticatedContext('operator-uid').firestore();
       await setupUsers(db);
-      const docRef = await db.collection('eyeglasses').add({ brand: 'Test' });
+      await assertFails(db.collection('eyeglasses').add({
+        brand: 'Hack Attempt',
+        model: 'Malicious',
+        salePrice: 1,
+        organizationId: 'org-other',
+      }));
+    });
+
+    it('DENIES operator updating eyeglass in other org', async () => {
+      const db = testEnv.authenticatedContext('operator-uid').firestore();
+      await setupUsers(db);
+      const docRef = await db.collection('eyeglasses').add({
+        brand: 'Other',
+        model: 'Model',
+        salePrice: 100,
+        organizationId: 'org-other',
+      });
+      await assertFails(docRef.update({ salePrice: 200 }));
+    });
+  });
+
+  describe('Audit Logs - Immutable and System-Only Creation', () => {
+    it('allows operator to read audit logs in own org', async () => {
+      const db = testEnv.authenticatedContext('operator-uid').firestore();
+      await setupUsers(db);
+      await db.collection('auditLogs').doc('log-1').set({
+        entityType: 'Prodotto',
+        operation: 'CREAZIONE',
+        details: 'Test',
+        organizationId: 'org-main',
+      });
+      await assertSucceeds(db.collection('auditLogs').doc('log-1').get());
+    });
+
+    it('DENIES operator reading audit logs in other org', async () => {
+      const db = testEnv.authenticatedContext('operator-uid').firestore();
+      await setupUsers(db);
+      await assertFails(db.collection('auditLogs').doc('log-other').get());
+    });
+
+    it('DENIES operator creating audit logs (only system)', async () => {
+      const db = testEnv.authenticatedContext('operator-uid').firestore();
+      await setupUsers(db);
+      await assertFails(db.collection('auditLogs').add({
+        entityType: 'Prodotto',
+        operation: 'CREAZIONE',
+        details: 'Fake log',
+        organizationId: 'org-main',
+      }));
+    });
+
+    it('DENIES admin creating audit logs (only system)', async () => {
+      const db = testEnv.authenticatedContext('admin-uid').firestore();
+      await setupUsers(db);
+      await assertFails(db.collection('auditLogs').add({
+        entityType: 'Prodotto',
+        operation: 'CREAZIONE',
+        details: 'Fake log',
+        organizationId: 'org-main',
+      }));
+    });
+
+    it('DENIES updating audit logs (immutable)', async () => {
+      const db = testEnv.authenticatedContext('admin-uid').firestore();
+      await setupUsers(db);
+      const docRef = await db.collection('auditLogs').add({ 
+        entityType: 'Test',
+        organizationId: 'org-main',
+      });
+      await assertFails(docRef.update({ details: 'Modified' }));
+    });
+
+    it('DENIES deleting audit logs (immutable)', async () => {
+      const db = testEnv.authenticatedContext('admin-uid').firestore();
+      await setupUsers(db);
+      const docRef = await db.collection('auditLogs').add({ 
+        entityType: 'Test',
+        organizationId: 'org-main',
+      });
+      await assertFails(docRef.delete());
+    });
+  });
+
+  describe('Eyeglasses Collection', () => {
+    it('allows admin to read eyeglasses in own org', async () => {
+      const db = testEnv.authenticatedContext('admin-uid').firestore();
+      await setupUsers(db);
+      await assertSucceeds(db.collection('eyeglasses').doc('eg-1').get());
+    });
+
+    it('allows operator to read eyeglasses in own org', async () => {
+      const db = testEnv.authenticatedContext('operator-uid').firestore();
+      await setupUsers(db);
+      await assertSucceeds(db.collection('eyeglasses').doc('eg-1').get());
+    });
+
+    it('allows operator to create eyeglass in own org', async () => {
+      const db = testEnv.authenticatedContext('operator-uid').firestore();
+      await setupUsers(db);
+      await assertSucceeds(db.collection('eyeglasses').add({
+        brand: 'Ray-Ban',
+        model: 'Aviator',
+        salePrice: 150,
+        organizationId: 'org-main',
+      }));
+    });
+
+    it('allows operator to update eyeglass in own org', async () => {
+      const db = testEnv.authenticatedContext('operator-uid').firestore();
+      await setupUsers(db);
+      const docRef = await db.collection('eyeglasses').add({ 
+        brand: 'Test', 
+        organizationId: 'org-main',
+      });
       await assertSucceeds(docRef.update({ salePrice: 200 }));
     });
 
     it('denies operator deleting eyeglass', async () => {
       const db = testEnv.authenticatedContext('operator-uid').firestore();
       await setupUsers(db);
-      const docRef = await db.collection('eyeglasses').add({ brand: 'Test' });
+      const docRef = await db.collection('eyeglasses').add({ 
+        brand: 'Test',
+        organizationId: 'org-main',
+      });
       await assertFails(docRef.delete());
     });
 
-    it('allows admin to delete eyeglass', async () => {
+    it('allows admin to delete eyeglass in own org', async () => {
       const db = testEnv.authenticatedContext('admin-uid').firestore();
       await setupUsers(db);
-      const docRef = await db.collection('eyeglasses').add({ brand: 'Test' });
+      const docRef = await db.collection('eyeglasses').add({ 
+        brand: 'Test',
+        organizationId: 'org-main',
+      });
       await assertSucceeds(docRef.delete());
     });
 
@@ -217,20 +344,21 @@ describe('Firestore Security Rules', () => {
     });
   });
 
-  describe('Clients collection', () => {
-    it('allows operator to read clients', async () => {
+  describe('Clients Collection', () => {
+    it('allows operator to read clients in own org', async () => {
       const db = testEnv.authenticatedContext('operator-uid').firestore();
       await setupUsers(db);
       await assertSucceeds(db.collection('clients').doc('cl-1').get());
     });
 
-    it('allows operator to create client', async () => {
+    it('allows operator to create client in own org', async () => {
       const db = testEnv.authenticatedContext('operator-uid').firestore();
       await setupUsers(db);
       await assertSucceeds(db.collection('clients').add({
         firstName: 'Mario',
         lastName: 'Rossi',
         fiscalCode: 'RSSMRA80C15H501Z',
+        organizationId: 'org-main',
       }));
     });
 
@@ -240,77 +368,55 @@ describe('Firestore Security Rules', () => {
     });
   });
 
-  describe('Sales collection', () => {
-    it('allows operator to create sale', async () => {
+  describe('Sales Collection', () => {
+    it('allows operator to create sale in own org', async () => {
       const db = testEnv.authenticatedContext('operator-uid').firestore();
       await setupUsers(db);
       await assertSucceeds(db.collection('sales').add({
         productId: 'eg-1',
         finalPrice: 150,
         paymentMethod: 'Contanti',
+        organizationId: 'org-main',
       }));
     });
 
     it('denies operator updating sale', async () => {
       const db = testEnv.authenticatedContext('operator-uid').firestore();
       await setupUsers(db);
-      const docRef = await db.collection('sales').add({ finalPrice: 100 });
+      const docRef = await db.collection('sales').add({ 
+        finalPrice: 100,
+        organizationId: 'org-main',
+      });
       await assertFails(docRef.update({ finalPrice: 200 }));
     });
 
-    it('allows admin to update sale', async () => {
+    it('allows admin to update sale in own org', async () => {
       const db = testEnv.authenticatedContext('admin-uid').firestore();
       await setupUsers(db);
-      const docRef = await db.collection('sales').add({ finalPrice: 100 });
+      const docRef = await db.collection('sales').add({ 
+        finalPrice: 100,
+        organizationId: 'org-main',
+      });
       await assertSucceeds(docRef.update({ finalPrice: 200 }));
     });
   });
 
-  describe('AuditLogs collection', () => {
-    it('allows operator to read audit logs', async () => {
-      const db = testEnv.authenticatedContext('operator-uid').firestore();
-      await setupUsers(db);
-      await assertSucceeds(db.collection('auditLogs').doc('log-1').get());
-    });
-
-    it('allows operator to create audit log', async () => {
-      const db = testEnv.authenticatedContext('operator-uid').firestore();
-      await setupUsers(db);
-      await assertSucceeds(db.collection('auditLogs').add({
-        entityType: 'Prodotto',
-        operation: 'CREAZIONE',
-        details: 'Test',
-      }));
-    });
-
-    it('denies updating audit log (immutable)', async () => {
-      const db = testEnv.authenticatedContext('admin-uid').firestore();
-      await setupUsers(db);
-      const docRef = await db.collection('auditLogs').add({ entityType: 'Test' });
-      await assertFails(docRef.update({ details: 'Modified' }));
-    });
-
-    it('denies deleting audit log (immutable)', async () => {
-      const db = testEnv.authenticatedContext('admin-uid').firestore();
-      await setupUsers(db);
-      const docRef = await db.collection('auditLogs').add({ entityType: 'Test' });
-      await assertFails(docRef.delete());
-    });
-  });
-
-  describe('CustomCategories collection', () => {
-    it('allows operator full CRUD', async () => {
+  describe('CustomCategories Collection', () => {
+    it('allows operator full CRUD in own org', async () => {
       const db = testEnv.authenticatedContext('operator-uid').firestore();
       await setupUsers(db);
       
-      const docRef = await assertSucceeds(db.collection('customCategories').add({ name: 'Test' }));
+      const docRef = await assertSucceeds(db.collection('customCategories').add({ 
+        name: 'Test',
+        organizationId: 'org-main',
+      }));
       await assertSucceeds(docRef.update({ name: 'Updated' }));
       await assertSucceeds(docRef.delete());
     });
   });
 
-  describe('Settings collection', () => {
-    it('allows operator to read settings', async () => {
+  describe('Settings Collection', () => {
+    it('allows operator to read settings in own org', async () => {
       const db = testEnv.authenticatedContext('operator-uid').firestore();
       await setupUsers(db);
       await assertSucceeds(db.collection('settings').doc('general').get());
@@ -319,13 +425,19 @@ describe('Firestore Security Rules', () => {
     it('denies operator writing settings', async () => {
       const db = testEnv.authenticatedContext('operator-uid').firestore();
       await setupUsers(db);
-      await assertFails(db.collection('settings').doc('general').set({ theme: 'dark' }));
+      await assertFails(db.collection('settings').doc('general').set({ 
+        theme: 'dark',
+        organizationId: 'org-main',
+      }));
     });
 
-    it('allows admin to write settings', async () => {
+    it('allows admin to write settings in own org', async () => {
       const db = testEnv.authenticatedContext('admin-uid').firestore();
       await setupUsers(db);
-      await assertSucceeds(db.collection('settings').doc('general').set({ theme: 'dark' }));
+      await assertSucceeds(db.collection('settings').doc('general').set({ 
+        theme: 'dark',
+        organizationId: 'org-main',
+      }));
     });
   });
 });
