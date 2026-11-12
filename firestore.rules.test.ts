@@ -43,7 +43,10 @@ describe('Firestore Security Rules', () => {
   const unauthenticated = null;
 
   // Helper to set up user documents with organization membership
-  async function setupUsers(db: any) {
+  // Uses withSecurityRulesDisabled() to bypass rules for test setup
+  async function setupUsers() {
+    const db = testEnv.withSecurityRulesDisabled().firestore();
+    
     // Main organization users
     await db.collection('users').doc('admin-uid').set({
       role: 'Amministratore',
@@ -74,21 +77,22 @@ describe('Firestore Security Rules', () => {
   }
 
   describe('Users collection - Role Protection', () => {
+    beforeEach(async () => {
+      await setupUsers();
+    });
+
     it('allows admin to read all users in same org', async () => {
       const db = testEnv.authenticatedContext('admin-uid').firestore();
-      await setupUsers(db);
       await assertSucceeds(db.collection('users').doc('operator-uid').get());
     });
 
     it('allows user to read own document', async () => {
       const db = testEnv.authenticatedContext('operator-uid').firestore();
-      await setupUsers(db);
       await assertSucceeds(db.collection('users').doc('operator-uid').get());
     });
 
     it('denies user reading another user in same org', async () => {
       const db = testEnv.authenticatedContext('operator-uid').firestore();
-      await setupUsers(db);
       await assertFails(db.collection('users').doc('admin-uid').get());
     });
 
@@ -99,7 +103,6 @@ describe('Firestore Security Rules', () => {
 
     it('DENIES self-promotion to Amministratore', async () => {
       const db = testEnv.authenticatedContext('operator-uid').firestore();
-      await setupUsers(db);
       // Operator tries to change their own role to Amministratore
       await assertFails(db.collection('users').doc('operator-uid').update({
         role: 'Amministratore',
@@ -108,7 +111,6 @@ describe('Firestore Security Rules', () => {
 
     it('DENIES self-demotion from Amministratore', async () => {
       const db = testEnv.authenticatedContext('admin-uid').firestore();
-      await setupUsers(db);
       // Admin tries to change their own role to Operatore
       await assertFails(db.collection('users').doc('admin-uid').update({
         role: 'Operatore',
@@ -117,7 +119,6 @@ describe('Firestore Security Rules', () => {
 
     it('ALLOWS admin to change another user role', async () => {
       const db = testEnv.authenticatedContext('admin-uid').firestore();
-      await setupUsers(db);
       // Admin can change operator role
       await assertSucceeds(db.collection('users').doc('operator-uid').update({
         role: 'Cliente',
@@ -126,7 +127,6 @@ describe('Firestore Security Rules', () => {
 
     it('DENIES non-admin creating users', async () => {
       const db = testEnv.authenticatedContext('operator-uid').firestore();
-      await setupUsers(db);
       await assertFails(db.collection('users').doc('new-user').set({
         role: 'Operatore',
         name: 'New User',
@@ -137,29 +137,33 @@ describe('Firestore Security Rules', () => {
   });
 
   describe('Organization Membership Verification', () => {
+    beforeEach(async () => {
+      await setupUsers();
+    });
+
     it('allows admin to read own org', async () => {
       const db = testEnv.authenticatedContext('admin-uid').firestore();
-      await setupUsers(db);
       await assertSucceeds(db.collection('organizations').doc('org-main').get());
     });
 
     it('DENIES admin reading other org', async () => {
       const db = testEnv.authenticatedContext('admin-uid').firestore();
-      await setupUsers(db);
       await assertFails(db.collection('organizations').doc('org-other').get());
     });
 
     it('DENIES other org admin reading this org', async () => {
       const db = testEnv.authenticatedContext('other-org-admin-uid').firestore();
-      await setupUsers(db);
       await assertFails(db.collection('organizations').doc('org-main').get());
     });
   });
 
   describe('Cross-Organization Data Access', () => {
+    beforeEach(async () => {
+      await setupUsers();
+    });
+
     it('allows operator to read eyeglasses in own org', async () => {
       const db = testEnv.authenticatedContext('operator-uid').firestore();
-      await setupUsers(db);
       await db.collection('eyeglasses').doc('eg-1').set({
         brand: 'Ray-Ban',
         model: 'Aviator',
@@ -171,7 +175,6 @@ describe('Firestore Security Rules', () => {
 
     it('DENIES operator reading eyeglasses in other org', async () => {
       const db = testEnv.authenticatedContext('operator-uid').firestore();
-      await setupUsers(db);
       await db.collection('eyeglasses').doc('eg-other').set({
         brand: 'Other Brand',
         model: 'Other Model',
@@ -183,13 +186,11 @@ describe('Firestore Security Rules', () => {
 
     it('DENIES other org admin reading this org eyeglasses', async () => {
       const db = testEnv.authenticatedContext('other-org-admin-uid').firestore();
-      await setupUsers(db);
       await assertFails(db.collection('eyeglasses').doc('eg-1').get());
     });
 
     it('allows operator to create eyeglass in own org', async () => {
       const db = testEnv.authenticatedContext('operator-uid').firestore();
-      await setupUsers(db);
       await assertSucceeds(db.collection('eyeglasses').add({
         brand: 'Ray-Ban',
         model: 'Aviator',
@@ -200,7 +201,6 @@ describe('Firestore Security Rules', () => {
 
     it('DENIES operator creating eyeglass in other org', async () => {
       const db = testEnv.authenticatedContext('operator-uid').firestore();
-      await setupUsers(db);
       await assertFails(db.collection('eyeglasses').add({
         brand: 'Hack Attempt',
         model: 'Malicious',
@@ -211,7 +211,6 @@ describe('Firestore Security Rules', () => {
 
     it('DENIES operator updating eyeglass in other org', async () => {
       const db = testEnv.authenticatedContext('operator-uid').firestore();
-      await setupUsers(db);
       const docRef = await db.collection('eyeglasses').add({
         brand: 'Other',
         model: 'Model',
@@ -223,9 +222,12 @@ describe('Firestore Security Rules', () => {
   });
 
   describe('Audit Logs - Immutable and System-Only Creation', () => {
+    beforeEach(async () => {
+      await setupUsers();
+    });
+
     it('allows operator to read audit logs in own org', async () => {
       const db = testEnv.authenticatedContext('operator-uid').firestore();
-      await setupUsers(db);
       await db.collection('auditLogs').doc('log-1').set({
         entityType: 'Prodotto',
         operation: 'CREAZIONE',
@@ -237,13 +239,11 @@ describe('Firestore Security Rules', () => {
 
     it('DENIES operator reading audit logs in other org', async () => {
       const db = testEnv.authenticatedContext('operator-uid').firestore();
-      await setupUsers(db);
       await assertFails(db.collection('auditLogs').doc('log-other').get());
     });
 
     it('DENIES operator creating audit logs (only system)', async () => {
       const db = testEnv.authenticatedContext('operator-uid').firestore();
-      await setupUsers(db);
       await assertFails(db.collection('auditLogs').add({
         entityType: 'Prodotto',
         operation: 'CREAZIONE',
@@ -254,7 +254,6 @@ describe('Firestore Security Rules', () => {
 
     it('DENIES admin creating audit logs (only system)', async () => {
       const db = testEnv.authenticatedContext('admin-uid').firestore();
-      await setupUsers(db);
       await assertFails(db.collection('auditLogs').add({
         entityType: 'Prodotto',
         operation: 'CREAZIONE',
@@ -265,7 +264,6 @@ describe('Firestore Security Rules', () => {
 
     it('DENIES updating audit logs (immutable)', async () => {
       const db = testEnv.authenticatedContext('admin-uid').firestore();
-      await setupUsers(db);
       const docRef = await db.collection('auditLogs').add({ 
         entityType: 'Test',
         organizationId: 'org-main',
@@ -275,7 +273,6 @@ describe('Firestore Security Rules', () => {
 
     it('DENIES deleting audit logs (immutable)', async () => {
       const db = testEnv.authenticatedContext('admin-uid').firestore();
-      await setupUsers(db);
       const docRef = await db.collection('auditLogs').add({ 
         entityType: 'Test',
         organizationId: 'org-main',
@@ -285,21 +282,22 @@ describe('Firestore Security Rules', () => {
   });
 
   describe('Eyeglasses Collection', () => {
+    beforeEach(async () => {
+      await setupUsers();
+    });
+
     it('allows admin to read eyeglasses in own org', async () => {
       const db = testEnv.authenticatedContext('admin-uid').firestore();
-      await setupUsers(db);
       await assertSucceeds(db.collection('eyeglasses').doc('eg-1').get());
     });
 
     it('allows operator to read eyeglasses in own org', async () => {
       const db = testEnv.authenticatedContext('operator-uid').firestore();
-      await setupUsers(db);
       await assertSucceeds(db.collection('eyeglasses').doc('eg-1').get());
     });
 
     it('allows operator to create eyeglass in own org', async () => {
       const db = testEnv.authenticatedContext('operator-uid').firestore();
-      await setupUsers(db);
       await assertSucceeds(db.collection('eyeglasses').add({
         brand: 'Ray-Ban',
         model: 'Aviator',
@@ -310,7 +308,6 @@ describe('Firestore Security Rules', () => {
 
     it('allows operator to update eyeglass in own org', async () => {
       const db = testEnv.authenticatedContext('operator-uid').firestore();
-      await setupUsers(db);
       const docRef = await db.collection('eyeglasses').add({ 
         brand: 'Test', 
         organizationId: 'org-main',
@@ -320,7 +317,6 @@ describe('Firestore Security Rules', () => {
 
     it('denies operator deleting eyeglass', async () => {
       const db = testEnv.authenticatedContext('operator-uid').firestore();
-      await setupUsers(db);
       const docRef = await db.collection('eyeglasses').add({ 
         brand: 'Test',
         organizationId: 'org-main',
@@ -330,7 +326,6 @@ describe('Firestore Security Rules', () => {
 
     it('allows admin to delete eyeglass in own org', async () => {
       const db = testEnv.authenticatedContext('admin-uid').firestore();
-      await setupUsers(db);
       const docRef = await db.collection('eyeglasses').add({ 
         brand: 'Test',
         organizationId: 'org-main',
@@ -345,15 +340,17 @@ describe('Firestore Security Rules', () => {
   });
 
   describe('Clients Collection', () => {
+    beforeEach(async () => {
+      await setupUsers();
+    });
+
     it('allows operator to read clients in own org', async () => {
       const db = testEnv.authenticatedContext('operator-uid').firestore();
-      await setupUsers(db);
       await assertSucceeds(db.collection('clients').doc('cl-1').get());
     });
 
     it('allows operator to create client in own org', async () => {
       const db = testEnv.authenticatedContext('operator-uid').firestore();
-      await setupUsers(db);
       await assertSucceeds(db.collection('clients').add({
         firstName: 'Mario',
         lastName: 'Rossi',
@@ -369,9 +366,12 @@ describe('Firestore Security Rules', () => {
   });
 
   describe('Sales Collection', () => {
+    beforeEach(async () => {
+      await setupUsers();
+    });
+
     it('allows operator to create sale in own org', async () => {
       const db = testEnv.authenticatedContext('operator-uid').firestore();
-      await setupUsers(db);
       await assertSucceeds(db.collection('sales').add({
         productId: 'eg-1',
         finalPrice: 150,
@@ -382,7 +382,6 @@ describe('Firestore Security Rules', () => {
 
     it('denies operator updating sale', async () => {
       const db = testEnv.authenticatedContext('operator-uid').firestore();
-      await setupUsers(db);
       const docRef = await db.collection('sales').add({ 
         finalPrice: 100,
         organizationId: 'org-main',
@@ -392,7 +391,6 @@ describe('Firestore Security Rules', () => {
 
     it('allows admin to update sale in own org', async () => {
       const db = testEnv.authenticatedContext('admin-uid').firestore();
-      await setupUsers(db);
       const docRef = await db.collection('sales').add({ 
         finalPrice: 100,
         organizationId: 'org-main',
@@ -402,9 +400,12 @@ describe('Firestore Security Rules', () => {
   });
 
   describe('CustomCategories Collection', () => {
+    beforeEach(async () => {
+      await setupUsers();
+    });
+
     it('allows operator full CRUD in own org', async () => {
       const db = testEnv.authenticatedContext('operator-uid').firestore();
-      await setupUsers(db);
       
       const docRef = await assertSucceeds(db.collection('customCategories').add({ 
         name: 'Test',
@@ -416,15 +417,17 @@ describe('Firestore Security Rules', () => {
   });
 
   describe('Settings Collection', () => {
+    beforeEach(async () => {
+      await setupUsers();
+    });
+
     it('allows operator to read settings in own org', async () => {
       const db = testEnv.authenticatedContext('operator-uid').firestore();
-      await setupUsers(db);
       await assertSucceeds(db.collection('settings').doc('general').get());
     });
 
     it('denies operator writing settings', async () => {
       const db = testEnv.authenticatedContext('operator-uid').firestore();
-      await setupUsers(db);
       await assertFails(db.collection('settings').doc('general').set({ 
         theme: 'dark',
         organizationId: 'org-main',
@@ -433,7 +436,6 @@ describe('Firestore Security Rules', () => {
 
     it('allows admin to write settings in own org', async () => {
       const db = testEnv.authenticatedContext('admin-uid').firestore();
-      await setupUsers(db);
       await assertSucceeds(db.collection('settings').doc('general').set({ 
         theme: 'dark',
         organizationId: 'org-main',
