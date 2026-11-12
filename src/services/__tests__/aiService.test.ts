@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { AIService } from './aiService';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { AIService } from '../aiService';
 
 describe('AIService.localFallbackQueryParser', () => {
   const aiService = new AIService();

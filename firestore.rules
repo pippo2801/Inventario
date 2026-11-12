@@ -1,0 +1,98 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Amministratore';
+    }
+    
+    function isOperatorOrAdmin() {
+      return isSignedIn() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Amministratore' ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Operatore');
+    }
+
+    // Users collection - users can read their own data, admins can read all
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isOwner(userId) || isAdmin();
+    }
+
+    // Organizations - only admins of that org can read/write
+    match /organizations/{orgId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // Eyeglasses - operators and admins can read/write
+    match /eyeglasses/{eyeglassId} {
+      allow read: if isOperatorOrAdmin();
+      allow create: if isOperatorOrAdmin();
+      allow update: if isOperatorOrAdmin();
+      allow delete: if isAdmin(); // Only admins can delete
+    }
+
+    // Clients - operators and admins can read/write
+    match /clients/{clientId} {
+      allow read: if isOperatorOrAdmin();
+      allow create: if isOperatorOrAdmin();
+      allow update: if isOperatorOrAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Prescriptions - operators and admins can read/write
+    match /prescriptions/{prescriptionId} {
+      allow read: if isOperatorOrAdmin();
+      allow create: if isOperatorOrAdmin();
+      allow update: if isOperatorOrAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Sales - operators can create, admins can read/update/delete
+    match /sales/{saleId} {
+      allow read: if isOperatorOrAdmin();
+      allow create: if isOperatorOrAdmin();
+      allow update: if isAdmin(); // Only admins can modify sales (for corrections)
+      allow delete: if isAdmin();
+    }
+
+    // Audit logs - read-only for operators/admins, create only by system
+    match /auditLogs/{logId} {
+      allow read: if isOperatorOrAdmin();
+      allow create: if isOperatorOrAdmin(); // System creates these
+      allow update, delete: if false; // Immutable
+    }
+
+    // Custom categories - operators and admins
+    match /customCategories/{categoryId} {
+      allow read: if isOperatorOrAdmin();
+      allow create, update, delete: if isOperatorOrAdmin();
+    }
+
+    // Settings - only admins
+    match /settings/{settingId} {
+      allow read: if isOperatorOrAdmin();
+      allow write: if isAdmin();
+    }
+
+    // Sync status - operators and admins
+    match /syncStatus/{statusId} {
+      allow read: if isOperatorOrAdmin();
+      allow write: if isOperatorOrAdmin();
+    }
+
+    // Default deny for any other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

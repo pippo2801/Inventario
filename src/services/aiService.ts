@@ -6,6 +6,7 @@ import { SanitaryCardOCR } from '../plugins/sanitaryCardOCR';
 // - Modular AIService layer decouples backend / AI provider.
 
 import { db } from './db';
+import { parseHealthCardOCR } from './codiceFiscaleUtils';
 import {
   Eyeglass,
   Client,
@@ -340,75 +341,19 @@ class AIService {
       const ret = await SanitaryCardOCR.recognize({ image: imageBase64 });
       const text = ret.text || '';
 
-      const normalizedText = text.toUpperCase().replace(/[^A-Z0-9]/g, '');
-      const cfRegex = /[A-Z]{6}[0-9L-V]{2}[A-Z][0-9L-V]{2}[A-Z][0-9L-V]{3}[A-Z]/;
-      const cfMatch = normalizedText.match(cfRegex);
-      const codiceFiscale = cfMatch ? cfMatch[0].toUpperCase() : '';
+      // Use the extracted utility for complete parsing with validation
+      const parsed = parseHealthCardOCR(text);
 
-      // Extract structured fields from raw OCR text (Italian health card format)
-      const extractField = (fieldName: string, textToSearch: string): string => {
-        const regex = new RegExp(`${fieldName}[\s:]*([A-ZÀ-ÿ\s\-']+)`, 'i');
-        const match = textToSearch.match(regex);
-        return match ? match[1].trim().toUpperCase() : '';
-      };
-
-      const cognome = extractField('COGNOME', text) || extractField('COGNOME E NOME', text).split(' ')[0] || '';
-      const nome = extractField('NOME', text) || '';
-      const comuneNascita = extractField('COMUNE', text) || extractField('LUOGO NASCITA', text) || extractField('NASCITA COMUNE', text) || '';
-      const sessoFromText = extractField('SESSO', text).charAt(0) || '';
-
-      let sesso = sessoFromText;
-      let dataNascita = '';
-
-      // Also try to extract date of birth from text if not in CF
-      const dateMatch = text.match(/(\d{1,2})[\/\-\.]\s*(\d{1,2})[\/\-\.]\s*(\d{4})/);
-      let dataFromText = '';
-      if (dateMatch) {
-        const [, day, month, year] = dateMatch;
-        dataFromText = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-      }
-
-      if (codiceFiscale.length === 16) {
-        const yyStr = codiceFiscale.substring(6, 8);
-        const yy = parseInt(yyStr, 10);
-        const currentYearShort = new Date().getFullYear() % 100;
-        const year = yy <= currentYearShort ? 2000 + yy : 1900 + yy;
-
-        const monthMap: Record<string, string> = {
-          'A': '01', 'B': '02', 'C': '03', 'D': '04', 'E': '05', 'H': '06',
-          'L': '07', 'M': '08', 'P': '09', 'R': '10', 'S': '11', 'T': '12'
-        };
-
-        const mChar = codiceFiscale.charAt(8);
-        const month = monthMap[mChar] || '01';
-
-        let dVal = parseInt(codiceFiscale.substring(9, 11), 10);
-
-        if (dVal > 40) {
-          sesso = 'F';
-          dVal -= 40;
-        } else {
-          sesso = 'M';
-        }
-
-        const day = dVal < 10 ? '0' + dVal : String(dVal);
-        dataNascita = `${year}-${month}-${day}`;
-      } else if (dataFromText) {
-        // Fallback: use date extracted from text
-        dataNascita = dataFromText;
-      }
-
+      // Map to the expected return type
       return {
-        codiceFiscale,
-        cognome,
-        nome,
-        dataNascita,
-        comuneNascita,
-        sesso,
-        confidence: codiceFiscale
-          ? 'Codice Fiscale estratto e decodificato'
-          : 'OCR eseguito: codice fiscale non rilevato',
-        rawText: text,
+        codiceFiscale: parsed.codiceFiscale,
+        cognome: parsed.cognome,
+        nome: parsed.nome,
+        dataNascita: parsed.dataNascita,
+        comuneNascita: parsed.comuneNascita,
+        sesso: parsed.sesso,
+        confidence: parsed.confidence,
+        rawText: parsed.rawText,
       };
     } catch (e) {
       console.error('Errore Tesseract OCR:', e);
@@ -524,3 +469,4 @@ class AIService {
 }
 
 export const aiService = new AIService();
+export { AIService };

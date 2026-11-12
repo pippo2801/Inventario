@@ -472,8 +472,16 @@ class DatabaseService {
       throw new Error('Occhiale non trovato');
     }
 
+    // Find the most recent sale for this product (not already deleted)
+    const productSales = this.sales
+      .filter((s) => s.productId === productId && s.deletedAt === null)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    const latestSale = productSales[0];
+
     const oldStatus = product.status;
 
+    // Restore product to available
     product.status = 'Disponibile';
     product.isShowcase = false;
     product.updatedAt = new Date().toISOString();
@@ -482,18 +490,33 @@ class DatabaseService {
 
     this.persist('eyeglasses', this.eyeglasses);
 
+    // If there's an associated sale, mark it as cancelled (soft delete)
+    if (latestSale) {
+      latestSale.deletedAt = new Date().toISOString();
+      this.persist('sales', this.sales);
+
+      this.addAuditLog(
+        'Vendita',
+        latestSale.id,
+        'ANNULLAMENTO',
+        `Vendita annullata per ripristino prodotto: ${product.brand} ${product.model} (Scontrino: ${latestSale.saleNumber})`,
+        'Attiva',
+        'Annullata'
+      );
+    }
+
     this.addAuditLog(
       'Vendita',
       product.id,
       'RIPRISTINO_VENDITA',
-      `Occhiale ripristinato da Venduto a Disponibile: ${product.brand} ${product.model}.`,
+      `Occhiale ripristinato da Venduto a Disponibile: ${product.brand} ${product.model}.${latestSale ? ` Vendita ${latestSale.saleNumber} annullata.` : ''}`,
       `${oldStatus}`,
       'Disponibile'
     );
 
     this.pushNotification(
       `Occhiale ripristinato: ${product.brand} ${product.model}`,
-      `${this.currentUser.name} ha ripristinato ${product.brand} ${product.model} da Venduto a Disponibile.`,
+      `${this.currentUser.name} ha ripristinato ${product.brand} ${product.model} da Venduto a Disponibile.${latestSale ? ` Vendita ${latestSale.saleNumber} annullata.` : ''}`,
       'vendite',
       'inventario',
       product.id
