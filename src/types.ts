@@ -183,7 +183,7 @@ export interface AppNotification {
   originDevice: string;
 }
 
-export type SyncState = 'synced' | 'syncing' | 'offline' | 'conflict';
+export type SyncState = 'synced' | 'syncing' | 'online' | 'offline' | 'conflict';
 
 export interface SyncStatus {
   state: SyncState;

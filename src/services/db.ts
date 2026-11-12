@@ -208,11 +208,11 @@ class DatabaseService {
 
   public toggleOfflineMode() {
     if (this.syncStatus.state === 'offline') {
-      this.syncStatus.state = 'synced';
-      this.syncStatus.lastSyncTimestamp = new Date().toISOString();
-      this.syncStatus.pendingChangesCount = 0;
+      // Go online - state becomes 'online', not 'synced' (no fake sync)
+      this.syncStatus.state = 'online';
       this.notify();
     } else {
+      // Go offline
       this.syncStatus.state = 'offline';
       this.notify();
     }

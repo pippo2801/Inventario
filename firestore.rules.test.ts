@@ -4,7 +4,7 @@
  * Requires Firebase emulator running: firebase emulators:start --only firestore
  */
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { 
   initializeTestEnvironment, 
   RulesTestEnvironment,
@@ -20,8 +20,8 @@ describe('Firestore Security Rules', () => {
   const PROJECT_ID = 'test-project-' + Date.now();
   
   beforeAll(async () => {
-    // Load the actual firestore.rules file
-    const rulesPath = path.join(__dirname, '..', 'firestore.rules');
+    // Load the actual firestore.rules file from project root
+    const rulesPath = path.join(__dirname, 'firestore.rules');
     const rules = fs.readFileSync(rulesPath, 'utf-8');
     
     testEnv = await initializeTestEnvironment({
@@ -73,6 +73,84 @@ describe('Firestore Security Rules', () => {
       name: 'Other Org Admin',
       email: 'admin@other.com',
       organizationId: 'org-other',
+    });
+  }
+
+  // Helper to create test data with security rules disabled
+  // Use this for test data that would be blocked by rules (cross-org data, audit logs, etc.)
+  async function setupTestDataWithRulesDisabled() {
+    const db = testEnv.withSecurityRulesDisabled().firestore();
+    
+    // Cross-org eyeglasses
+    await db.collection('eyeglasses').doc('eg-1').set({
+      brand: 'Ray-Ban',
+      model: 'Aviator',
+      salePrice: 150,
+      organizationId: 'org-main',
+    });
+    await db.collection('eyeglasses').doc('eg-other').set({
+      brand: 'Other Brand',
+      model: 'Other Model',
+      salePrice: 200,
+      organizationId: 'org-other',
+    });
+    await db.collection('eyeglasses').doc('eg-test').set({
+      brand: 'Test',
+      model: 'Test Model',
+      salePrice: 100,
+      organizationId: 'org-main',
+    });
+    
+    // Cross-org audit logs
+    await db.collection('auditLogs').doc('log-1').set({
+      entityType: 'Prodotto',
+      operation: 'CREAZIONE',
+      details: 'Test',
+      organizationId: 'org-main',
+    });
+    await db.collection('auditLogs').doc('log-other').set({
+      entityType: 'Prodotto',
+      operation: 'CREAZIONE',
+      details: 'Other org log',
+      organizationId: 'org-other',
+    });
+    await db.collection('auditLogs').doc('log-test').set({
+      entityType: 'Test',
+      organizationId: 'org-main',
+    });
+    
+    // Cross-org clients
+    await db.collection('clients').doc('cl-1').set({
+      firstName: 'Mario',
+      lastName: 'Rossi',
+      fiscalCode: 'RSSMRA80C15H501Z',
+      organizationId: 'org-main',
+    });
+    
+    // Cross-org sales
+    await db.collection('sales').doc('sale-1').set({
+      productId: 'eg-1',
+      finalPrice: 150,
+      paymentMethod: 'Contanti',
+      organizationId: 'org-main',
+    });
+    await db.collection('sales').doc('sale-other').set({
+      productId: 'eg-other',
+      finalPrice: 200,
+      paymentMethod: 'Contanti',
+      organizationId: 'org-other',
+    });
+    
+    // Custom categories
+    await db.collection('customCategories').doc('cat-1').set({
+      name: 'Test Category',
+      organizationId: 'org-main',
+    });
+    
+    // Settings
+    await db.collection('settings').doc('general').set({
+      theme: 'light',
+      organizationId: 'org-main',
     });
   }
 
@@ -160,27 +238,16 @@ describe('Firestore Security Rules', () => {
   describe('Cross-Organization Data Access', () => {
     beforeEach(async () => {
       await setupUsers();
+      await setupTestDataWithRulesDisabled();
     });
 
     it('allows operator to read eyeglasses in own org', async () => {
       const db = testEnv.authenticatedContext('operator-uid').firestore();
-      await db.collection('eyeglasses').doc('eg-1').set({
-        brand: 'Ray-Ban',
-        model: 'Aviator',
-        salePrice: 150,
-        organizationId: 'org-main',
-      });
       await assertSucceeds(db.collection('eyeglasses').doc('eg-1').get());
     });
 
     it('DENIES operator reading eyeglasses in other org', async () => {
       const db = testEnv.authenticatedContext('operator-uid').firestore();
-      await db.collection('eyeglasses').doc('eg-other').set({
-        brand: 'Other Brand',
-        model: 'Other Model',
-        salePrice: 200,
-        organizationId: 'org-other',
-      });
       await assertFails(db.collection('eyeglasses').doc('eg-other').get());
     });
 
@@ -224,16 +291,11 @@ describe('Firestore Security Rules', () => {
   describe('Audit Logs - Immutable and System-Only Creation', () => {
     beforeEach(async () => {
       await setupUsers();
+      await setupTestDataWithRulesDisabled();
     });
 
     it('allows operator to read audit logs in own org', async () => {
       const db = testEnv.authenticatedContext('operator-uid').firestore();
-      await db.collection('auditLogs').doc('log-1').set({
-        entityType: 'Prodotto',
-        operation: 'CREAZIONE',
-        details: 'Test',
-        organizationId: 'org-main',
-      });
       await assertSucceeds(db.collection('auditLogs').doc('log-1').get());
     });
 
@@ -284,6 +346,7 @@ describe('Firestore Security Rules', () => {
   describe('Eyeglasses Collection', () => {
     beforeEach(async () => {
       await setupUsers();
+      await setupTestDataWithRulesDisabled();
     });
 
     it('allows admin to read eyeglasses in own org', async () => {
@@ -342,6 +405,7 @@ describe('Firestore Security Rules', () => {
   describe('Clients Collection', () => {
     beforeEach(async () => {
       await setupUsers();
+      await setupTestDataWithRulesDisabled();
     });
 
     it('allows operator to read clients in own org', async () => {
@@ -368,6 +432,7 @@ describe('Firestore Security Rules', () => {
   describe('Sales Collection', () => {
     beforeEach(async () => {
       await setupUsers();
+      await setupTestDataWithRulesDisabled();
     });
 
     it('allows operator to create sale in own org', async () => {
@@ -402,6 +467,7 @@ describe('Firestore Security Rules', () => {
   describe('CustomCategories Collection', () => {
     beforeEach(async () => {
       await setupUsers();
+      await setupTestDataWithRulesDisabled();
     });
 
     it('allows operator full CRUD in own org', async () => {
@@ -419,6 +485,7 @@ describe('Firestore Security Rules', () => {
   describe('Settings Collection', () => {
     beforeEach(async () => {
       await setupUsers();
+      await setupTestDataWithRulesDisabled();
     });
 
     it('allows operator to read settings in own org', async () => {

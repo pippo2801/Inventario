@@ -25,6 +25,7 @@ import {
   UserCheck,
   RefreshCw,
   WifiOff,
+  Wifi,
   Store,
   UserPlus,
   ReceiptText,
@@ -424,12 +425,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="flex items-center gap-1.5">
               {syncStatus.state === 'offline' ? (
                 <WifiOff className="w-3.5 h-3.5 text-[#a87555]" />
+              ) : syncStatus.state === 'online' ? (
+                <Wifi className="w-3.5 h-3.5 text-[#66816f]" />
               ) : (
                 <RefreshCw className="w-3.5 h-3.5 text-[#8b5360]" />
               )}
               <span>
                 {syncStatus.state === 'offline'
                   ? 'Modalità offline'
+                  : syncStatus.state === 'online'
+                  ? 'Online'
                   : syncStatus.state === 'syncing'
                   ? 'Sincronizzazione…'
                   : 'Sincronizzato'}
@@ -440,7 +445,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onClick={() => db.toggleOfflineMode()}
               className="text-[#8b5360] font-semibold hover:underline"
             >
-              {syncStatus.state === 'offline' ? 'Online' : 'Sincronizza'}
+              {syncStatus.state === 'offline' ? 'Online' : 'Simula offline'}
             </button>
           </div>
 
