@@ -13,6 +13,10 @@ import {
 } from '@firebase/rules-unit-testing';
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 describe('Firestore Security Rules', () => {
   let testEnv: RulesTestEnvironment;
@@ -156,6 +160,7 @@ describe('Firestore Security Rules', () => {
 
   describe('Users collection - Role Protection', () => {
     beforeEach(async () => {
+      await testEnv.clearFirestore();
       await setupUsers();
     });
 
@@ -216,6 +221,7 @@ describe('Firestore Security Rules', () => {
 
   describe('Organization Membership Verification', () => {
     beforeEach(async () => {
+      await testEnv.clearFirestore();
       await setupUsers();
     });
 
@@ -237,6 +243,7 @@ describe('Firestore Security Rules', () => {
 
   describe('Cross-Organization Data Access', () => {
     beforeEach(async () => {
+      await testEnv.clearFirestore();
       await setupUsers();
       await setupTestDataWithRulesDisabled();
     });
@@ -290,6 +297,7 @@ describe('Firestore Security Rules', () => {
 
   describe('Audit Logs - Immutable and System-Only Creation', () => {
     beforeEach(async () => {
+      await testEnv.clearFirestore();
       await setupUsers();
       await setupTestDataWithRulesDisabled();
     });
@@ -345,6 +353,7 @@ describe('Firestore Security Rules', () => {
 
   describe('Eyeglasses Collection', () => {
     beforeEach(async () => {
+      await testEnv.clearFirestore();
       await setupUsers();
       await setupTestDataWithRulesDisabled();
     });
@@ -404,6 +413,7 @@ describe('Firestore Security Rules', () => {
 
   describe('Clients Collection', () => {
     beforeEach(async () => {
+      await testEnv.clearFirestore();
       await setupUsers();
       await setupTestDataWithRulesDisabled();
     });
@@ -431,6 +441,7 @@ describe('Firestore Security Rules', () => {
 
   describe('Sales Collection', () => {
     beforeEach(async () => {
+      await testEnv.clearFirestore();
       await setupUsers();
       await setupTestDataWithRulesDisabled();
     });
@@ -466,6 +477,7 @@ describe('Firestore Security Rules', () => {
 
   describe('CustomCategories Collection', () => {
     beforeEach(async () => {
+      await testEnv.clearFirestore();
       await setupUsers();
       await setupTestDataWithRulesDisabled();
     });
@@ -484,6 +496,7 @@ describe('Firestore Security Rules', () => {
 
   describe('Settings Collection', () => {
     beforeEach(async () => {
+      await testEnv.clearFirestore();
       await setupUsers();
       await setupTestDataWithRulesDisabled();
     });

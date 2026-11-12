@@ -42,8 +42,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run unit tests
-        run: npm run test
+      - name: Run unit tests (excluding Firestore tests)
+        run: npx vitest run --exclude=firestore.rules.test.ts
 
   firestore-rules-tests:
     name: Firestore Rules Tests
@@ -66,6 +66,20 @@ jobs:
         with:
           firestore: true
           project_id: test-project
+          start_options: --host=0.0.0.0 --port=8080
+
+      - name: Wait for Firestore Emulator
+        run: |
+          for i in {1..30}; do
+            if nc -z localhost 8080; then
+              echo "Firestore Emulator ready on port 8080"
+              exit 0
+            fi
+            echo "Waiting for Firestore Emulator... ($i/30)"
+            sleep 1
+          done
+          echo "Firestore Emulator failed to start"
+          exit 1
 
       - name: Run Firestore rules tests
         run: npx vitest run firestore.rules.test.ts
@@ -130,17 +144,8 @@ jobs:
 
       - name: Add Android platform and build
         run: |
-          npx @capacitor/cli add android
           npx @capacitor/cli sync android
           
-          # Force consistent Kotlin version
-          echo "" >> android/build.gradle
-          echo "subprojects {" >> android/build.gradle
-          echo "    configurations.all {" >> android/build.gradle
-          echo "        resolutionStrategy.force 'org.jetbrains.kotlin:kotlin-stdlib:1.8.22', 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22'" >> android/build.gradle
-          echo "    }" >> android/build.gradle
-          echo "}" >> android/build.gradle
-
           cd android
           ./gradlew assembleDebug
 
