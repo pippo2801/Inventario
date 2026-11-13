@@ -21,7 +21,7 @@ const __dirname = path.dirname(__filename);
 describe('Firestore Security Rules', () => {
   let testEnv: RulesTestEnvironment;
   
-  const PROJECT_ID = 'test-project-' + Date.now();
+  const PROJECT_ID = 'test-project';
   
   beforeAll(async () => {
     // Load the actual firestore.rules file from project root
@@ -32,6 +32,8 @@ describe('Firestore Security Rules', () => {
       projectId: PROJECT_ID,
       firestore: {
         rules,
+        host: 'localhost',
+        port: 8080,
       },
     });
   });

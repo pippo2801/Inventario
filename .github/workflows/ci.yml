@@ -21,7 +21,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: TypeScript type check
         run: npm run lint
@@ -40,7 +40,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Run unit tests (excluding Firestore tests)
         run: npx vitest run --exclude=firestore.rules.test.ts
@@ -59,10 +59,10 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Install firebase-tools
-        run: npm install -g firebase-tools
+        run: npm install -g firebase-tools@13.0.0
 
       - name: Run Firestore rules tests with emulator
         run: firebase emulators:exec --only=firestore "npx vitest run firestore.rules.test.ts" --project=test-project
@@ -84,7 +84,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Build web assets
         run: npm run build
@@ -111,7 +111,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Download web build
         uses: actions/download-artifact@v4
