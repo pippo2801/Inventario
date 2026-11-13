@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { db } from '../db';
 
-// Mock localStorage
+// Mock localStorage before importing db
 const createMockStorage = () => {
   const store: Record<string, string> = {};
   return {
@@ -13,13 +12,27 @@ const createMockStorage = () => {
   };
 };
 
+const mockStorage = createMockStorage();
+vi.stubGlobal('localStorage', mockStorage);
+
+// Import db after mocking localStorage
+let db: ReturnType<typeof import('../db')>['db'];
+
+async function setupDb() {
+  vi.resetModules();
+  const { db: freshDb } = await import('../db');
+  db = freshDb;
+  // Clear all data
+  mockStorage.clear();
+  vi.resetModules();
+  const { db: freshDb } = await import('../db');
+  return freshDb;
+}
+
 describe('DatabaseService', () => {
-  let mockStorage: ReturnType<typeof createMockStorage>;
-  
-  beforeEach(() => {
-    mockStorage = createMockStorage();
-    vi.stubGlobal('localStorage', mockStorage);
-    vi.resetModules();
+  beforeEach(async () => {
+    mockStorage.clear();
+    await setupDb();
   });
   
   afterEach(() => {
@@ -27,7 +40,8 @@ describe('DatabaseService', () => {
   });
 
   describe('Client Management', () => {
-    it('should create a new client with all required fields', () => {
+    it('should create a new client with all required fields', async () => {
+      await setupDb();
       const client = db.addClient({
         firstName: 'Mario',
         lastName: 'Rossi',
@@ -48,7 +62,8 @@ describe('DatabaseService', () => {
       expect(client.version).toBe(1);
     });
 
-    it('should retrieve client by ID', () => {
+    it('should retrieve client by ID', async () => {
+      await setupDb();
       const created = db.addClient({
         firstName: 'Luigi',
         lastName: 'Bianchi',
@@ -61,7 +76,8 @@ describe('DatabaseService', () => {
       expect(found).toEqual(created);
     });
 
-    it('should filter out soft-deleted clients by default', () => {
+    it('should filter out soft-deleted clients by default', async () => {
+      await setupDb();
       const client1 = db.addClient({
         firstName: 'Active',
         lastName: 'User',
@@ -88,7 +104,8 @@ describe('DatabaseService', () => {
       expect(allClients.find(c => c.id === client2.id)).toBeDefined();
     });
 
-    it('should restore soft-deleted client', () => {
+    it('should restore soft-deleted client', async () => {
+      await setupDb();
       const client = db.addClient({
         firstName: 'ToRestore',
         lastName: 'User',
@@ -104,7 +121,8 @@ describe('DatabaseService', () => {
       expect(db.getClients(false).find(c => c.id === client.id)).toBeDefined();
     });
 
-    it('should update client with version increment', () => {
+    it('should update client with version increment', async () => {
+      await setupDb();
       const client = db.addClient({
         firstName: 'Original',
         lastName: 'Name',
@@ -124,7 +142,8 @@ describe('DatabaseService', () => {
   });
 
   describe('Eyeglass Management', () => {
-    it('should create eyeglass with all required fields', () => {
+    it('should create eyeglass with all required fields', async () => {
+      await setupDb();
       const eyeglass = db.addEyeglass({
         sku: 'TEST-001',
         supplierCode: 'SUP-001',
@@ -150,7 +169,8 @@ describe('DatabaseService', () => {
       expect(eyeglass.status).toBe('Disponibile');
     });
 
-    it('should execute fast sale and mark product as Venduto', () => {
+    it('should execute fast sale and mark product as Venduto', async () => {
+      await setupDb();
       const eyeglass = db.addEyeglass({
         sku: 'SALE-001',
         supplierCode: 'SUP-001',
@@ -188,7 +208,8 @@ describe('DatabaseService', () => {
       expect(soldProduct!.isShowcase).toBe(false);
     });
 
-    it('should restore eyeglass from sale and cancel the sale record', () => {
+    it('should restore eyeglass from sale and cancel the sale record', async () => {
+      await setupDb();
       const eyeglass = db.addEyeglass({
         sku: 'RESTORE-001',
         supplierCode: 'SUP-001',
@@ -239,7 +260,8 @@ describe('DatabaseService', () => {
       expect(deletedSale!.deletedAt).toBeDefined();
     });
 
-    it('should handle multiple sales for same product correctly on restore', () => {
+    it('should handle multiple sales for same product correctly on restore', async () => {
+      await setupDb();
       const eyeglass = db.addEyeglass({
         sku: 'MULTI-001',
         supplierCode: 'SUP-001',
@@ -305,7 +327,8 @@ describe('DatabaseService', () => {
   });
 
   describe('Soft Delete and Restore Integrity', () => {
-    it('should maintain audit trail on restore from sale', () => {
+    it('should maintain audit trail on restore from sale', async () => {
+      await setupDb();
       const eyeglass = db.addEyeglass({
         sku: 'AUDIT-001',
         supplierCode: 'SUP-001',
@@ -353,7 +376,8 @@ describe('DatabaseService', () => {
   });
 
   describe('Statistics', () => {
-    it('should calculate inventory statistics correctly', () => {
+    it('should calculate inventory statistics correctly', async () => {
+      await setupDb();
       // Add available eyeglasses
       db.addEyeglass({
         sku: 'STAT-1',
@@ -405,7 +429,8 @@ describe('DatabaseService', () => {
       expect(stats.promoPieces).toBe(1);
     });
 
-    it('should calculate sales statistics correctly', () => {
+    it('should calculate sales statistics correctly', async () => {
+      await setupDb();
       const eyeglass1 = db.addEyeglass({
         sku: 'SALE-STAT-1',
         supplierCode: 'SUP',
@@ -443,7 +468,8 @@ describe('DatabaseService', () => {
   });
 
   describe('Custom Categories', () => {
-    it('should create, update, and delete custom categories', () => {
+    it('should create, update, and delete custom categories', async () => {
+      await setupDb();
       const cat = db.createCustomCategory('Test Category', 'Description');
       
       expect(cat.name).toBe('Test Category');
@@ -461,7 +487,8 @@ describe('DatabaseService', () => {
       expect(cats.find(c => c.id === cat.id)).toBeUndefined();
     });
 
-    it('should add and remove eyeglasses from category', () => {
+    it('should add and remove eyeglasses from category', async () => {
+      await setupDb();
       const eyeglass = db.addEyeglass({
         sku: 'CAT-001',
         supplierCode: 'SUP',
@@ -497,7 +524,8 @@ describe('DatabaseService', () => {
   });
 
   describe('Backup and Restore', () => {
-    it('should export backup data', () => {
+    it('should export backup data', async () => {
+      await setupDb();
       // Add some data
       db.addClient({
         firstName: 'Backup',

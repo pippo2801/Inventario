@@ -383,5 +383,10 @@ describe('Codice Fiscale Utilities', () => {
       expect(isValidCalendarDate(1900, 2, 29)).toBe(false);
       expect(isValidCalendarDate(2004, 2, 29)).toBe(true);
     });
+
+    it('should reject Feb 29 on non-leap years', () => {
+      expect(isValidCalendarDate(2001, 2, 29)).toBe(false);
+      expect(isValidCalendarDate(2021, 2, 29)).toBe(false);
+    });
   });
 });

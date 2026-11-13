@@ -51,7 +51,7 @@ describe('Firestore Security Rules', () => {
   // Helper to set up user documents with organization membership
   // Uses withSecurityRulesDisabled() to bypass rules for test setup
   async function setupUsers() {
-    const db = testEnv.withSecurityRulesDisabled().firestore();
+    const db = testEnv.withSecurityRulesDisabled().firestore;
     
     // Main organization users
     await db.collection('users').doc('admin-uid').set({
@@ -85,7 +85,7 @@ describe('Firestore Security Rules', () => {
   // Helper to create test data with security rules disabled
   // Use this for test data that would be blocked by rules (cross-org data, audit logs, etc.)
   async function setupTestDataWithRulesDisabled() {
-    const db = testEnv.withSecurityRulesDisabled().firestore();
+    const db = testEnv.withSecurityRulesDisabled().firestore;
     
     // Cross-org eyeglasses
     await db.collection('eyeglasses').doc('eg-1').set({
