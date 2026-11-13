@@ -15,18 +15,14 @@ const createMockStorage = () => {
 const mockStorage = createMockStorage();
 vi.stubGlobal('localStorage', mockStorage);
 
-// Import db after mocking localStorage
-let db: ReturnType<typeof import('../db')>['db'];
+let db: any;
 
 async function setupDb() {
   vi.resetModules();
   const { db: freshDb } = await import('../db');
   db = freshDb;
-  // Clear all data
   mockStorage.clear();
-  vi.resetModules();
-  const { db: freshDb } = await import('../db');
-  return freshDb;
+  return db;
 }
 
 describe('DatabaseService', () => {

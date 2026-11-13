@@ -424,7 +424,7 @@ class AIService {
     const colors = ['nero', 'nera', 'neri', 'tartaruga', 'havana', 'oro', 'argento', 'blu', 'verde', 'marrone'];
     for (const c of colors) {
       if (q.includes(c)) {
-        color = c;
+        color = c === 'nera' || c === 'neri' ? 'nero' : c;
         break;
       }
     }

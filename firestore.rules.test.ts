@@ -51,41 +51,41 @@ describe('Firestore Security Rules', () => {
   // Helper to set up user documents with organization membership
   // Uses withSecurityRulesDisabled() to bypass rules for test setup
   async function setupUsers() {
-    const db = testEnv.withSecurityRulesDisabled().firestore;
-    
-    // Main organization users
-    await db.collection('users').doc('admin-uid').set({
-      role: 'Amministratore',
-      name: 'Admin User',
-      email: 'admin@test.com',
-      organizationId: 'org-main',
-    });
-    await db.collection('users').doc('operator-uid').set({
-      role: 'Operatore',
-      name: 'Operator User',
-      email: 'operator@test.com',
-      organizationId: 'org-main',
-    });
-    await db.collection('users').doc('client-uid').set({
-      role: 'Cliente',
-      name: 'Client User',
-      email: 'client@test.com',
-      organizationId: 'org-main',
-    });
-    
-    // Different organization admin
-    await db.collection('users').doc('other-org-admin-uid').set({
-      role: 'Amministratore',
-      name: 'Other Org Admin',
-      email: 'admin@other.com',
-      organizationId: 'org-other',
+    await testEnv.withSecurityRulesDisabled(async (db) => {
+      // Main organization users
+      await db.collection('users').doc('admin-uid').set({
+        role: 'Amministratore',
+        name: 'Admin User',
+        email: 'admin@test.com',
+        organizationId: 'org-main',
+      });
+      await db.collection('users').doc('operator-uid').set({
+        role: 'Operatore',
+        name: 'Operator User',
+        email: 'operator@test.com',
+        organizationId: 'org-main',
+      });
+      await db.collection('users').doc('client-uid').set({
+        role: 'Cliente',
+        name: 'Client User',
+        email: 'client@test.com',
+        organizationId: 'org-main',
+      });
+      
+      // Different organization admin
+      await db.collection('users').doc('other-org-admin-uid').set({
+        role: 'Amministratore',
+        name: 'Other Org Admin',
+        email: 'admin@other.com',
+        organizationId: 'org-other',
+      });
     });
   }
 
   // Helper to create test data with security rules disabled
   // Use this for test data that would be blocked by rules (cross-org data, audit logs, etc.)
   async function setupTestDataWithRulesDisabled() {
-    const db = testEnv.withSecurityRulesDisabled().firestore;
+    await testEnv.withSecurityRulesDisabled(async (db) => {
     
     // Cross-org eyeglasses
     await db.collection('eyeglasses').doc('eg-1').set({
@@ -158,6 +158,7 @@ describe('Firestore Security Rules', () => {
       theme: 'light',
       organizationId: 'org-main',
     });
+  });
   }
 
   describe('Users collection - Role Protection', () => {

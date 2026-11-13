@@ -199,7 +199,11 @@ describe('Codice Fiscale Utilities', () => {
 
     it('should reject invalid day (0 or >31)', () => {
       expect(parseDataNascitaFromCF('RSSMRA80C00H501Z')).toBeNull();
-      expect(parseDataNascitaFromCF('RSSMRA80C45H501Z')).toBeNull();
+      // Day 45 = female day 5 (45-40=5), which is valid
+      const result = parseDataNascitaFromCF('RSSMRA80C45H501Z');
+      expect(result).not.toBeNull();
+      expect(result?.sesso).toBe('F');
+      expect(result?.dataNascita).toBe('1980-03-05');
     });
 
     it('should reject invalid calendar date (Feb 30)', () => {
