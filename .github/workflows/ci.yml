@@ -61,28 +61,11 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Setup Firebase Emulator
-        uses: firebase/emulators@v2
-        with:
-          firestore: true
-          project_id: test-project
-          start_options: --host=0.0.0.0 --port=8080
+      - name: Install firebase-tools
+        run: npm install -g firebase-tools
 
-      - name: Wait for Firestore Emulator
-        run: |
-          for i in {1..30}; do
-            if nc -z localhost 8080; then
-              echo "Firestore Emulator ready on port 8080"
-              exit 0
-            fi
-            echo "Waiting for Firestore Emulator... ($i/30)"
-            sleep 1
-          done
-          echo "Firestore Emulator failed to start"
-          exit 1
-
-      - name: Run Firestore rules tests
-        run: npx vitest run firestore.rules.test.ts
+      - name: Run Firestore rules tests with emulator
+        run: firebase emulators:exec --only=firestore "npx vitest run firestore.rules.test.ts" --project=test-project
         env:
           FIRESTORE_EMULATOR_HOST: localhost:8080
 
