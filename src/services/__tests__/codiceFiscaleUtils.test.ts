@@ -26,8 +26,8 @@ describe('Codice Fiscale Utilities', () => {
     });
 
     it('should normalize I->1 only in digit positions', () => {
-      const cfWithIInDigits = 'RSSMRA80C1I5H501Z'; // I at position 10 (should be 1)
-      expect(normalizeCFString(cfWithIInDigits)).toBe('RSSMRA80C15H501Z');
+      const cfWithIInDigits = 'RSSMRA80C1IH501Z'; // I at position 10 (should be 1)
+      expect(normalizeCFString(cfWithIInDigits)).toBe('RSSMRA80C11H501Z');
     });
 
     it('should NOT normalize I in letter positions', () => {
