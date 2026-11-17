@@ -7,6 +7,7 @@ import { SanitaryCardOCR } from '../plugins/sanitaryCardOCR';
 
 import { db } from './db';
 import { parseHealthCardOCR } from './codiceFiscaleUtils';
+import { parseLocalPrescriptionOCR } from './prescriptionOCR';
 import {
   Eyeglass,
   Client,
@@ -365,15 +366,14 @@ class AIService {
     rawText?: string;
   }> {
     try {
-      const res = await fetch('/api/ai/ocr-prescription', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64 }),
-      });
-      if (!res.ok) throw new Error('OCR prescription error');
-      return await res.json();
+      const result = await SanitaryCardOCR.recognize({ image: imageBase64 });
+      if (!result.text?.trim()) {
+        throw new Error('Nessun testo leggibile trovato nella foto della prescrizione.');
+      }
+      return parseLocalPrescriptionOCR(result.text);
     } catch (e) {
-      throw new Error('Lettura OCR della prescrizione non disponibile. Inserisci i dati manualmente e verifica la ricetta originale.');
+      const message = e instanceof Error ? e.message : String(e);
+      throw new Error(message || 'OCR locale non disponibile. Inserisci i dati manualmente e verifica la ricetta originale.');
     }
   }
 
