@@ -692,5 +692,39 @@ describe('DatabaseService', () => {
       expect(db.getNotifications().some((notification: any) => notification.title === 'Backup test' && !notification.read)).toBe(true);
       expect(db.getCustomCategories().some((category: any) => category.name === 'Categoria backup')).toBe(true);
     });
+
+    it('should roll back in-memory and persisted data when backup storage fails', async () => {
+      await setupDb();
+      const originalClient = db.addClient({
+        firstName: 'Original',
+        lastName: 'Client',
+        fiscalCode: 'ORIGINAL00A01A001A',
+        phone: '+39 3000000000',
+        isComplete: true,
+      });
+
+      const backup = JSON.parse(db.exportBackupData());
+      backup.clients = [{
+        ...originalClient,
+        id: 'CLI-999',
+        firstName: 'Imported',
+      }];
+      const originalSetItem = mockStorage.setItem;
+      let failed = false;
+      vi.spyOn(mockStorage, 'setItem').mockImplementation((key: string, value: string) => {
+        if (!failed && key === 'studio_ottico_dipietro_clients') {
+          failed = true;
+          throw new Error('Storage quota exceeded');
+        }
+        originalSetItem(key, value);
+      });
+
+      expect(db.importBackupData(JSON.stringify(backup))).toBe(false);
+      expect(db.getClientById(originalClient.id)?.firstName).toBe('Original');
+      expect(db.getClientById('CLI-999')).toBeUndefined();
+      expect(JSON.parse(mockStorage.getItem('studio_ottico_dipietro_clients') || '[]')).toEqual(
+        expect.arrayContaining([expect.objectContaining({ id: originalClient.id, firstName: 'Original' })])
+      );
+    });
   });
 });
