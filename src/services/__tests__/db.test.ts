@@ -161,7 +161,7 @@ describe('DatabaseService', () => {
         imageUrl: '',
       });
       
-      expect(eyeglass.id).toMatch(/^EG-\d+$/);
+      expect(eyeglass.id).toMatch(/^OPT-\d+$/);
       expect(eyeglass.brand).toBe('Ray-Ban');
       expect(eyeglass.status).toBe('Disponibile');
     });
