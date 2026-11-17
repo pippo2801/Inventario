@@ -111,6 +111,18 @@ export const PrescriptionsView: React.FC = () => {
       alert('Inserire il nome del cliente intestatario.');
       return;
     }
+    if (![odSph, odCyl, odAx, osSph, osCyl, osAx, pdTotal, pdOd, pdOs, mountingHeight].every(Number.isFinite)) {
+      alert('Controllare i valori numerici della prescrizione.');
+      return;
+    }
+    if (odAx < 0 || odAx > 180 || osAx < 0 || osAx > 180) {
+      alert('L’asse di entrambi gli occhi deve essere compreso tra 0° e 180°.');
+      return;
+    }
+    if (pdTotal <= 0 || pdOd <= 0 || pdOs <= 0 || mountingHeight <= 0) {
+      alert('Inserire e verificare PD totale, PD monoculare e altezza di montaggio prima di salvare.');
+      return;
+    }
 
     const newPresc = db.createPrescription({
       clientId: clientId || undefined,
