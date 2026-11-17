@@ -709,14 +709,13 @@ describe('DatabaseService', () => {
         id: 'CLI-999',
         firstName: 'Imported',
       }];
-      const originalSetItem = mockStorage.setItem;
       let failed = false;
       vi.spyOn(mockStorage, 'setItem').mockImplementation((key: string, value: string) => {
         if (!failed && key === 'studio_ottico_dipietro_clients') {
           failed = true;
           throw new Error('Storage quota exceeded');
         }
-        originalSetItem(key, value);
+        mockStorage.store[key] = value;
       });
 
       expect(db.importBackupData(JSON.stringify(backup))).toBe(false);
