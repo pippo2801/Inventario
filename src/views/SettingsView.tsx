@@ -153,7 +153,7 @@ export const SettingsView: React.FC = () => {
             </h1>
           </div>
           <p className="text-xs sm:text-sm text-teal-300/80">
-            Controllo multi-dispositivo, ruoli Filippo & Mariangela, audit trail e salvataggi
+            Gestione locale dell'operatore, registro modifiche e backup di questo dispositivo
           </p>
         </div>
       </div>
@@ -213,9 +213,9 @@ export const SettingsView: React.FC = () => {
       {activeTab === 'users' && (
         <div className="space-y-4">
           <div className="p-4 rounded-xl bg-teal-950/40 border border-teal-800/60 text-xs text-slate-300">
-            <h3 className="font-bold text-white mb-1">Architettura Multi-Dispositivo dello Studio</h3>
+            <h3 className="font-bold text-white mb-1">Utenti locali su questo dispositivo</h3>
             <p>
-              Il sistema è configurato per supportare nativamente l'utilizzo contemporaneo da parte di Filippo e Mariangela sui rispettivi smartphone. Le operazioni sono firmate con l'identità dell'operatore e il nome del terminale.
+              Questi profili sono salvati soltanto su questo smartphone. Non esistono ancora account online né sincronizzazione con altri dispositivi.
             </p>
           </div>
 
