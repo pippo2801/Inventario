@@ -55,7 +55,7 @@ export function parseLocalPrescriptionOCR(rawText: string): LocalPrescriptionOCR
   const pdTotal = pdMatch ? Number(pdMatch[1].replace(',', '.')) : 0;
   const pdOdMatch = rawText.match(/\bPD\s*OD\s*[:=]?\s*(\d{2}(?:[.,]\d)?)\b/i);
   const pdOsMatch = rawText.match(/\bPD\s*OS\s*[:=]?\s*(\d{2}(?:[.,]\d)?)\b/i);
-  const heightMatch = rawText.match(/(?:\\bH\\b|ALT(?:EZZA)?\s*(?:MONT(?:AGGIO)?)?)\s*[:=]?\s*(\d{1,2}(?:[.,]\d)?)\s*(?:MM)?/i);
+  const heightMatch = rawText.match(/(?:\bH\b|ALT(?:EZZA)?\s*(?:MONT(?:AGGIO)?)?)\s*[:=]?\s*(\d{1,2}(?:[.,]\d)?)\s*(?:MM)?/i);
 
   return {
     doctorOrOptometrist: '',
