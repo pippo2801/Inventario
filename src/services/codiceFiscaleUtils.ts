@@ -266,7 +266,7 @@ export function parseHealthCardOCR(text: string): {
     
     // Warn if multiple valid candidates found
     if (candidates.length > 1) {
-      warnings.push(`Attenzione: ${candidates.length} codici fiscali validi rilevati, usato il primo: ${candidates[0]}`);
+      warnings.push(`Attenzione: rilevati più codici fiscali validi (${candidates.length}), usato il primo: ${candidates[0]}`);
     }
   } else if (fields.dataNascitaFromText) {
     // Fallback: use date extracted from text
