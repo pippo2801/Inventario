@@ -21,19 +21,20 @@ const __dirname = path.dirname(__filename);
 
 
 /** Small compat adapter for the modular Firestore SDK returned by rules-unit-testing v5. */
+function wrapDocument(ref: any) {
+  return {
+    set: (data: unknown) => setDoc(ref, data),
+    get: () => getDoc(ref),
+    update: (data: unknown) => updateDoc(ref, data),
+    delete: () => deleteDoc(ref),
+  };
+}
+
 function asCompat(db: any) {
   return {
     collection: (name: string) => ({
-      doc: (id?: string) => {
-        const ref = id ? doc(db, name, id) : doc(collection(db, name));
-        return {
-          set: (data: unknown) => setDoc(ref, data),
-          get: () => getDoc(ref),
-          update: (data: unknown) => updateDoc(ref, data),
-          delete: () => deleteDoc(ref),
-        };
-      },
-      add: (data: unknown) => addDoc(collection(db, name), data),
+      doc: (id?: string) => wrapDocument(id ? doc(db, name, id) : doc(collection(db, name))),
+      add: async (data: unknown) => wrapDocument(await addDoc(collection(db, name), data)),
     }),
   };
 }
