@@ -166,6 +166,37 @@ describe('DatabaseService', () => {
       expect(eyeglass.status).toBe('Disponibile');
     });
 
+    it('should normalize edited SKUs and reject duplicates or empty values', async () => {
+      await setupDb();
+      const input = {
+        sku: 'EDIT-1',
+        supplierCode: 'SUP',
+        brand: 'Test',
+        model: 'EditSku',
+        color: 'Black',
+        gender: 'Unisex',
+        purchasePrice: 10,
+        salePrice: 20,
+        isPromo: false,
+        isShowcase: false,
+        shape: 'Rotondo',
+        material: 'Metallo',
+        location: 'A1',
+        stockDate: new Date().toISOString(),
+        notes: '',
+        status: 'Disponibile',
+        imageUrl: '',
+      };
+      const first = db.addEyeglass(input);
+      const second = db.addEyeglass({ ...input, sku: 'EDIT-2' });
+
+      expect(db.updateEyeglass(first.id, { sku: '  edit-3  ' })?.sku).toBe('EDIT-3');
+      expect(() => db.updateEyeglass(first.id, { sku: ' edit-2 ' })).toThrow('Codice SKU già utilizzato: EDIT-2');
+      expect(() => db.updateEyeglass(first.id, { sku: '   ' })).toThrow('Il codice SKU è obbligatorio');
+      expect(db.getEyeglassById(second.id)?.sku).toBe('EDIT-2');
+      expect(db.getEyeglassById(first.id)?.sku).toBe('EDIT-3');
+    });
+
     it('should keep product IDs unique after permanent deletion and reject duplicate SKUs', async () => {
       await setupDb();
       const input = {
