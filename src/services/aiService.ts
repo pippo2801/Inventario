@@ -324,6 +324,9 @@ class AIService {
     try {
       const ret = await SanitaryCardOCR.recognize({ image: imageBase64 });
       const text = ret.text || '';
+      if (!text.trim()) {
+        throw new Error('Nessun testo leggibile trovato nella foto della tessera sanitaria. Inserisci i dati manualmente.');
+      }
 
       // Use the extracted utility for complete parsing with validation
       const parsed = parseHealthCardOCR(text);
