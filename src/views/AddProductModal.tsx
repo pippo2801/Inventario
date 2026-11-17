@@ -75,6 +75,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
         }
       } catch (err) {
         console.error(err);
+        alert(err instanceof Error ? err.message : 'Analisi immagine non disponibile. Puoi comunque inserire i dati manualmente.');
       } finally {
         setAiAnalyzing(false);
       }
