@@ -559,6 +559,36 @@ describe('DatabaseService', () => {
       expect(backupData.clients).toBeDefined();
       expect(backupData.eyeglasses).toBeDefined();
       expect(backupData.clients.length).toBeGreaterThan(0);
+      expect(backupData.users).toBeDefined();
+      expect(backupData.currentUser).toBeDefined();
+      expect(backupData.notifications).toBeInstanceOf(Array);
+      expect(backupData.settings).toBeDefined();
+      expect(backupData.customCategories).toBeInstanceOf(Array);
+    });
+
+    it('should restore local notifications, settings, and custom categories', async () => {
+      await setupDb();
+      const client = db.addClient({
+        firstName: 'Restore',
+        lastName: 'Check',
+        fiscalCode: 'RESTORE00A01A001A',
+        phone: '+39 3XX XXXXXXX',
+        isComplete: false,
+      });
+      db.pushNotification('Backup test', 'Notifica da conservare', 'importanti');
+      db.updateSettings({ appearance: { theme: 'dark' } });
+      db.createCustomCategory('Categoria backup', 'Categoria locale');
+
+      const backup = db.exportBackupData();
+      db.updateSettings({ appearance: { theme: 'light' } });
+      db.markAllNotificationsAsRead();
+      db.softDeleteClient(client.id);
+
+      expect(db.importBackupData(backup)).toBe(true);
+      expect(db.getClientById(client.id)?.deletedAt).toBeNull();
+      expect(db.getSettings().appearance.theme).toBe('dark');
+      expect(db.getNotifications().some((notification: any) => notification.title === 'Backup test' && !notification.read)).toBe(true);
+      expect(db.getCustomCategories().some((category: any) => category.name === 'Categoria backup')).toBe(true);
     });
   });
 });
