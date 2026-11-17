@@ -26,7 +26,6 @@ import {
 export const SettingsView: React.FC = () => {
   const users = db.getUsers();
   const currentUser = db.getCurrentUser();
-  const syncStatus = db.getSyncStatus();
   const auditLogs = db.getAuditLogs();
 
   const [activeTab, setActiveTab] = useState<'users' | 'sync' | 'backup' | 'audit' | 'categories'>('users');
@@ -279,55 +278,17 @@ export const SettingsView: React.FC = () => {
       {/* Tab 2: Sincronizzazione (Section 40) */}
       {activeTab === 'sync' && (
         <div className="space-y-4">
-          <div className="p-5 rounded-2xl bg-slate-900/90 border border-teal-900/60 space-y-4 text-xs">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-bold text-white">Stato del Canale di Sincronizzazione</h3>
-                <p className="text-slate-400 mt-0.5">
-                  Algoritmo di risoluzione automatica basato su timestamp ISO (vince la modifica più recente)
-                </p>
-              </div>
-
-              <span
-                className={`px-3 py-1 rounded-full font-bold text-xs border ${
-                  syncStatus.state === 'synced'
-                    ? 'bg-emerald-950 text-emerald-300 border-emerald-700'
-                    : syncStatus.state === 'offline'
-                    ? 'bg-rose-950 text-rose-300 border-rose-700'
-                    : 'bg-amber-950 text-amber-300 border-amber-700'
-                }`}
-              >
-                {syncStatus.state.toUpperCase()}
-              </span>
+          <div className="p-5 rounded-2xl bg-slate-900/90 border border-teal-900/60 space-y-3 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+              <h3 className="text-sm font-bold text-white">Modalità dispositivo singolo</h3>
             </div>
-
-            <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 grid grid-cols-2 gap-3">
-              <div>
-                <span className="text-[10px] text-slate-400 block">Ultima sincronizzazione completata:</span>
-                <span className="font-mono text-white">{new Date(syncStatus.lastSyncTime).toLocaleTimeString()}</span>
-              </div>
-              <div>
-                <span className="text-[10px] text-slate-400 block">Modifiche in attesa di replica:</span>
-                <span className="font-mono text-teal-300">{syncStatus.pendingChanges} operazioni</span>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-2 pt-2">
-              <button
-                onClick={() => db.toggleOfflineMode()}
-                className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-semibold text-xs flex items-center gap-1.5 transition-colors"
-              >
-                <RefreshCw className="w-4 h-4" />
-                <span>{syncStatus.state === 'offline' ? 'Torna Online' : 'Simula Offline'}</span>
-              </button>
-
-              <button
-                onClick={() => db.toggleOfflineMode()}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition-colors"
-              >
-                {syncStatus.state === 'offline' ? 'Disattiva Simulazione Offline' : 'Simula Disconnessione Offline (Sezione 47)'}
-              </button>
-            </div>
+            <p className="text-slate-300">
+              I dati vengono conservati nell'archivio locale di questo smartphone. La sincronizzazione cloud e quella con altri telefoni sono disattivate.
+            </p>
+            <p className="text-slate-400">
+              Per trasferire o proteggere i dati, usa la scheda Backup e Ripristino e conserva il file JSON in una posizione sicura.
+            </p>
           </div>
         </div>
       )}
@@ -338,7 +299,7 @@ export const SettingsView: React.FC = () => {
           <div className="p-4 rounded-xl bg-teal-950/40 border border-teal-800/60 text-slate-300">
             <h3 className="font-bold text-white mb-1">Regola dei 3 Backup (Sezione 42)</h3>
             <p>
-              1. Copia locale sullo smartphone • 2. Copia replicata sul secondo terminale • 3. Esportazione periodica su file JSON esterno/cloud.
+              1. Archivio locale sullo smartphone • 2. Backup JSON esportato in una posizione sicura • 3. Verifica periodica del ripristino.
             </p>
           </div>
 
