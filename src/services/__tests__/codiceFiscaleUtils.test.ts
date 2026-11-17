@@ -13,10 +13,10 @@ import {
 describe('Codice Fiscale Utilities', () => {
   describe('normalizeCFString - position-specific normalization', () => {
     it('should normalize O->0 only in digit positions (6,7,9,10,12,13,14)', () => {
-      // Valid CF: RSSMRA80C15H501Z
+      // Valid CF: RSSMRA80C15H501M
       // Position 6,7 = year (80), position 9,10 = day (15), position 12,13,14 = municipality (501)
-      const cfWithOInDigits = 'RSSMRA8OC15H501Z'; // O at position 7 (should be 0)
-      expect(normalizeCFString(cfWithOInDigits)).toBe('RSSMRA80C15H501Z');
+      const cfWithOInDigits = 'RSSMRA8OC15H501M'; // O at position 7 (should be 0)
+      expect(normalizeCFString(cfWithOInDigits)).toBe('RSSMRA80C15H501M');
     });
 
     it('should NOT normalize O in letter positions (0-5, 8, 11, 15)', () => {
@@ -27,7 +27,7 @@ describe('Codice Fiscale Utilities', () => {
 
     it('should normalize I->1 only in digit positions', () => {
       const cfWithIInDigits = 'RSSMRA80C1I5H501Z'; // I at position 10 (should be 1)
-      expect(normalizeCFString(cfWithIInDigits)).toBe('RSSMRA80C15H501Z');
+      expect(normalizeCFString(cfWithIInDigits)).toBe('RSSMRA80C15H501M');
     });
 
     it('should NOT normalize I in letter positions', () => {
@@ -47,30 +47,30 @@ describe('Codice Fiscale Utilities', () => {
     });
 
     it('should normalize 0->O in letter positions', () => {
-      const cfWithZeroInLetter = 'RSSMRA80C15H5O1Z'; // 0 at position 13 (should be letter)
-      expect(normalizeCFString(cfWithZeroInLetter)).toBe('RSSMRA80C15H5O1Z'); // Actually position 13 is digit...
+      const cfWithZeroInLetter = 'RSSMRA80C150501Z'; // 0 at position 11 (letter position)
+      expect(normalizeCFString(cfWithZeroInLetter)).toBe('RSSMRA80C15O501Z');
     });
 
     it('should handle multiple corrections at once', () => {
       // Multiple OCR errors in digit positions
       const cf = 'RSSMRA8OC1SH5O1Z'; // O at 7, S at 10, O at 13
-      expect(normalizeCFString(cf)).toBe('RSSMRA80C15H501Z');
+      expect(normalizeCFString(cf)).toBe('RSSMRA80C15H501M');
     });
 
     it('should not modify already correct CF', () => {
-      const correct = 'RSSMRA80C15H501Z';
+      const correct = 'RSSMRA80C15H501M';
       expect(normalizeCFString(correct)).toBe(correct);
     });
 
     it('should handle CF with wrong length gracefully', () => {
       expect(normalizeCFString('SHORT')).toBe('SHORT');
-      expect(normalizeCFString('RSSMRA80C15H501ZZ')).toBe('RSSMRA80C15H501ZZ');
+      expect(normalizeCFString('RSSMRA80C15H501MZ')).toBe('RSSMRA80C15H501MZ');
     });
   });
 
   describe('validateCodiceFiscaleChecksum', () => {
     it('should validate a known correct CF', () => {
-      expect(validateCodiceFiscaleChecksum('RSSMRA80C15H501Z')).toBe(true);
+      expect(validateCodiceFiscaleChecksum('RSSMRA80C15H501M')).toBe(true);
     });
 
     it('should reject invalid checksum', () => {
@@ -79,7 +79,7 @@ describe('Codice Fiscale Utilities', () => {
 
     it('should reject wrong length', () => {
       expect(validateCodiceFiscaleChecksum('RSSMRA80C15H501')).toBe(false);
-      expect(validateCodiceFiscaleChecksum('RSSMRA80C15H501ZZ')).toBe(false);
+      expect(validateCodiceFiscaleChecksum('RSSMRA80C15H501MZ')).toBe(false);
     });
   });
 
@@ -116,9 +116,9 @@ describe('Codice Fiscale Utilities', () => {
 
   describe('extractAllCodiceFiscaleCandidates', () => {
     it('should extract valid CF with OCR corrections', () => {
-      const text = 'RSSMRA8OC15H501Z'; // O instead of 0 at position 7
+      const text = 'RSSMRA8OC15H501M'; // O instead of 0 at position 7
       const candidates = extractAllCodiceFiscaleCandidates(text);
-      expect(candidates).toContain('RSSMRA80C15H501Z');
+      expect(candidates).toContain('RSSMRA80C15H501M');
     });
 
     it('should reject CF with invalid checksum', () => {
@@ -138,7 +138,7 @@ describe('Codice Fiscale Utilities', () => {
     });
 
     it('should find multiple valid candidates', () => {
-      const text = 'RSSMRA80C15H501Z BNCMRA85D20F205X';
+      const text = 'RSSMRA80C15H501M BNCMRA85D20F205R';
       const candidates = extractAllCodiceFiscaleCandidates(text);
       expect(candidates.length).toBeGreaterThanOrEqual(1);
     });
@@ -150,7 +150,7 @@ describe('Codice Fiscale Utilities', () => {
     });
 
     it('should deduplicate candidates', () => {
-      const text = 'RSSMRA80C15H501Z RSSMRA80C15H501Z';
+      const text = 'RSSMRA80C15H501M RSSMRA80C15H501M';
       const candidates = extractAllCodiceFiscaleCandidates(text);
       expect(candidates).toHaveLength(1);
     });
@@ -158,8 +158,8 @@ describe('Codice Fiscale Utilities', () => {
 
   describe('extractCodiceFiscale', () => {
     it('should return first valid candidate', () => {
-      const text = 'RSSMRA80C15H501Z BNCMRA85D20F205X';
-      expect(extractCodiceFiscale(text)).toBe('RSSMRA80C15H501Z');
+      const text = 'RSSMRA80C15H501M BNCMRA85D20F205R';
+      expect(extractCodiceFiscale(text)).toBe('RSSMRA80C15H501M');
     });
 
     it('should return empty string if no valid candidate', () => {
@@ -167,14 +167,14 @@ describe('Codice Fiscale Utilities', () => {
     });
 
     it('should apply OCR normalization before validation', () => {
-      const text = 'RSSMRA8OC15H501Z'; // OCR error
-      expect(extractCodiceFiscale(text)).toBe('RSSMRA80C15H501Z');
+      const text = 'RSSMRA8OC15H501M'; // OCR error
+      expect(extractCodiceFiscale(text)).toBe('RSSMRA80C15H501M');
     });
   });
 
   describe('parseDataNascitaFromCF', () => {
     it('should parse male birth date correctly', () => {
-      const result = parseDataNascitaFromCF('RSSMRA80C15H501Z');
+      const result = parseDataNascitaFromCF('RSSMRA80C15H501M');
       expect(result).toEqual({ dataNascita: '1980-03-15', sesso: 'M' });
     });
 
@@ -224,7 +224,7 @@ describe('Codice Fiscale Utilities', () => {
         DATA NASCITA: 15/03/1980
         COMUNE NASCITA: ROMA
         SESSO: M
-        CODICE FISCALE: RSSMRA80C15H501Z
+        CODICE FISCALE: RSSMRA80C15H501M
       `;
       const result = extractHealthCardFields(text);
       expect(result.cognome).toBe('ROSSI');
@@ -272,11 +272,11 @@ describe('Codice Fiscale Utilities', () => {
         DATA NASCITA: 15/03/1980
         COMUNE: ROMA
         SESSO: M
-        CODICE FISCALE: RSSMRA80C15H501Z
+        CODICE FISCALE: RSSMRA80C15H501M
       `;
       const result = parseHealthCardOCR(text);
       
-      expect(result.codiceFiscale).toBe('RSSMRA80C15H501Z');
+      expect(result.codiceFiscale).toBe('RSSMRA80C15H501M');
       expect(result.cognome).toBe('ROSSI');
       expect(result.nome).toBe('MARIO');
       expect(result.dataNascita).toBe('1980-03-15');
@@ -290,11 +290,11 @@ describe('Codice Fiscale Utilities', () => {
       const text = `
         COGNOME: ROSSI
         NOME: MARIO
-        CODICE FISCALE: RSSMRA8OC15H501Z
+        CODICE FISCALE: RSSMRA8OC15H501M
       `; // O instead of 0 at position 7
       const result = parseHealthCardOCR(text);
       
-      expect(result.codiceFiscale).toBe('RSSMRA80C15H501Z'); // Normalized
+      expect(result.codiceFiscale).toBe('RSSMRA80C15H501M'); // Normalized
       expect(result.dataNascita).toBe('1980-03-15');
       expect(result.warnings.length).toBe(0);
     });
@@ -342,7 +342,7 @@ describe('Codice Fiscale Utilities', () => {
         COGNOME: ROSSI
         NOME: MARIA
         SESSO: F
-        CODICE FISCALE: RSSMRA80C15H501Z
+        CODICE FISCALE: RSSMRA80C15H501M
       `; // CF indicates male (day 15), text says F
       const result = parseHealthCardOCR(text);
       
@@ -351,7 +351,7 @@ describe('Codice Fiscale Utilities', () => {
     });
 
     it('should warn about multiple valid CF candidates', () => {
-      const text = 'RSSMRA80C15H501Z BNCMRA85D20F205X';
+      const text = 'RSSMRA80C15H501M BNCMRA85D20F205R';
       const result = parseHealthCardOCR(text);
       
       expect(result.warnings.some(w => w.includes('più codici fiscali'))).toBe(true);
