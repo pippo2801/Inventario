@@ -106,31 +106,23 @@ function isValidCalendarDate(year: number, month: number, day: number): boolean 
  * Returns array of valid candidates (with valid checksum and valid date).
  */
 export function extractAllCodiceFiscaleCandidates(text: string): string[] {
-  const normalized = text.toUpperCase().replace(/[^A-Z0-9]/g, '');
-  const cfRegex = /[A-Z]{6}[A-Z0-9]{2}[A-Z][A-Z0-9]{2}[A-Z][A-Z0-9]{3}[A-Z]/g;
-  const rawMatches = normalized.match(cfRegex) || [];
-  
+  const rawCandidates = text.toUpperCase().split(/\r?\n/).flatMap(line => {
+    const codeLine = line.replace(/^\s*CODICE\s*FISCALE\s*[:\-]?\s*/i, '');
+    return codeLine.replace(/[^A-Z0-9]/g, ' ').match(/[A-Z0-9]{16}/g) || [];
+  }).filter(candidate => /^[A-Z]{6}[A-Z0-9]{2}[A-Z][A-Z0-9]{2}[A-Z][A-Z0-9]{3}[A-Z]$/.test(candidate));
+
   const candidates: string[] = [];
-  
-  for (const match of rawMatches) {
-    // Try with position-specific normalization
+
+  for (const match of rawCandidates) {
     const normalized = normalizeCFString(match);
-    
-    // Validate checksum
     if (!validateCodiceFiscaleChecksum(normalized)) continue;
-    
-    // Validate date is real calendar date
+
     const parsed = parseDataNascitaFromCF(normalized);
     if (!parsed) continue;
-    
-    // Validate it's a real calendar date (not just 1-31)
-    const [year, month, day] = parsed.dataNascita.split('-').map(Number);
-    if (!isValidCalendarDate(year, month, day)) continue;
-    
+
     candidates.push(normalized);
   }
-  
-  // Remove duplicates while preserving order
+
   return [...new Set(candidates)];
 }
 
