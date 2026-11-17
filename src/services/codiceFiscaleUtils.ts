@@ -107,7 +107,7 @@ function isValidCalendarDate(year: number, month: number, day: number): boolean 
  */
 export function extractAllCodiceFiscaleCandidates(text: string): string[] {
   const normalized = text.toUpperCase().replace(/[^A-Z0-9]/g, '');
-  const cfRegex = /[A-Z]{6}[0-9L-V]{2}[A-Z][0-9L-V]{2}[A-Z][0-9L-V]{3}[A-Z]/g;
+  const cfRegex = /[A-Z]{6}[A-Z0-9]{2}[A-Z][A-Z0-9]{2}[A-Z][A-Z0-9]{3}[A-Z]/g;
   const rawMatches = normalized.match(cfRegex) || [];
   
   const candidates: string[] = [];
@@ -197,20 +197,20 @@ export function extractHealthCardFields(text: string): {
   sesso: string;
   dataNascitaFromText: string;
 } {
-  const extractField = (fieldName: string, textToSearch: string): string => {
-    const regex = new RegExp(`${fieldName}[\\s:]*([A-ZÀ-ÿ\\s\\-']+)`, 'i');
-    const match = textToSearch.match(regex);
-    return match ? match[1].trim().toUpperCase() : '';
+  const lines = text.toUpperCase().split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  const readLabel = (labelPattern: string): string => {
+    const regex = new RegExp(`^(?:${labelPattern})\\s*[:\\-]?\\s*(.*?)\\s*$`, 'i');
+    const line = lines.find(candidate => regex.test(candidate));
+    return line ? (line.match(regex)?.[1] || '').trim().replace(/\\s+/g, ' ') : '';
   };
-  
-  const cognome = extractField('COGNOME', text) || 
-                  extractField('COGNOME E NOME', text).split(' ')[0] || '';
-  const nome = extractField('NOME', text) || '';
-  const comuneNascita = extractField('COMUNE', text) || 
-                        extractField('LUOGO NASCITA', text) || 
-                        extractField('NASCITA COMUNE', text) || '';
-  const sessoFromText = extractField('SESSO', text).charAt(0) || '';
-  
+
+  const combinedName = readLabel('COGNOME\\s+E\\s+NOME');
+  const combinedParts = combinedName.split(/\\s+/).filter(Boolean);
+  const cognome = readLabel('COGNOME') || combinedParts[0] || '';
+  const nome = readLabel('NOME') || (combinedParts.length > 1 ? combinedParts.slice(1).join(' ') : '');
+  const comuneNascita = readLabel('LUOGO\\s+NASCITA|NASCITA\\s+COMUNE|COMUNE\\s+NASCITA|COMUNE');
+  const sessoFromText = readLabel('SESSO').charAt(0) || '';
+
   // Extract date from text (DD/MM/YYYY or variants)
   const dateMatch = text.match(/(\d{1,2})[\/\-\.]\s*(\d{1,2})[\/\-\.]\s*(\d{4})/);
   let dataNascitaFromText = '';
@@ -244,7 +244,14 @@ export function parseHealthCardOCR(text: string): {
   
   // Extract ALL candidates and pick the best
   const candidates = extractAllCodiceFiscaleCandidates(text);
-  const codiceFiscale = candidates[0] || '';
+  const flattenedText = text.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const potentialMatches = flattenedText.match(/[A-Z]{6}[A-Z0-9]{2}[A-Z][A-Z0-9]{2}[A-Z][A-Z0-9]{3}[A-Z]/g) || [];
+  const invalidCandidates = potentialMatches
+    .map(candidate => normalizeCFString(candidate))
+    .filter(candidate => !validateCodiceFiscaleChecksum(candidate));
+  // Keep a structurally readable but checksum-invalid code visible for manual review;
+  // never silently treat it as verified.
+  const codiceFiscale = candidates[0] || invalidCandidates[0] || '';
   
   let sesso = fields.sesso;
   let dataNascita = '';
