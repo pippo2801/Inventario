@@ -234,7 +234,7 @@ class DatabaseService {
   public addEyeglass(item: Omit<Eyeglass, 'id' | 'createdAt' | 'updatedAt' | 'createdBy' | 'updatedBy' | 'version' | 'deletedAt'>, isAiOrigin = false): Eyeglass {
     const normalizedSku = item.sku.trim().toUpperCase();
     if (!normalizedSku) throw new Error('Il codice SKU è obbligatorio');
-    if (this.eyeglasses.some(existing => existing.sku.trim().toUpperCase() === normalizedSku)) {
+    if (this.eyeglasses.some(existing => (existing.sku || '').trim().toUpperCase() === normalizedSku)) {
       throw new Error(`Codice SKU già utilizzato: ${normalizedSku}`);
     }
     const newId = 'OPT-' + String(this.eyeglassSequence).padStart(3, '0');
@@ -401,7 +401,7 @@ class DatabaseService {
     notes?: string;
   }): Sale {
     const product = this.getEyeglassById(data.productId);
-    if (!product || product.deletedAt !== null) {
+    if (!product || product.deletedAt != null) {
       throw new Error('Prodotto non trovato o presente nel cestino');
     }
     if (product.status !== 'Disponibile') {
@@ -422,7 +422,7 @@ class DatabaseService {
     const now = new Date().toISOString();
 
     const sale: Sale = {
-      id: 'SALE-' + Date.now(),
+      id: 'SALE-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
       saleNumber,
       date: now,
       productId: product.id,
