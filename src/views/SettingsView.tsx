@@ -284,10 +284,10 @@ export const SettingsView: React.FC = () => {
               <h3 className="text-sm font-bold text-white">Modalità dispositivo singolo</h3>
             </div>
             <p className="text-slate-300">
-              I dati vengono conservati nell'archivio locale di questo smartphone. La sincronizzazione cloud e quella con altri telefoni sono disattivate.
+              I dati vengono conservati nello spazio locale dell'app su questo smartphone. La sincronizzazione cloud e quella con altri telefoni sono disattivate. I profili utente locali non sono un sistema di autenticazione o una protezione con password.
             </p>
             <p className="text-slate-400">
-              Per trasferire o proteggere i dati, usa la scheda Backup e Ripristino e conserva il file JSON in una posizione sicura.
+              Il backup JSON contiene dati personali e sanitari in chiaro: non è cifrato. Proteggi il telefono con blocco schermo e conserva il file in una posizione privata.
             </p>
           </div>
         </div>
@@ -299,7 +299,7 @@ export const SettingsView: React.FC = () => {
           <div className="p-4 rounded-xl bg-teal-950/40 border border-teal-800/60 text-slate-300">
             <h3 className="font-bold text-white mb-1">Backup locale e copie manuali</h3>
             <p>
-              I dati restano su questo smartphone. Le copie JSON devono essere esportate manualmente: non viene eseguito alcun backup automatico o caricamento cloud.
+              I dati restano su questo smartphone. Le copie JSON devono essere esportate manualmente: non viene eseguito alcun backup automatico o caricamento cloud. Il file esportato non è cifrato e contiene dati personali e sanitari.
             </p>
           </div>
 
