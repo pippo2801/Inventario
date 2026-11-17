@@ -340,17 +340,9 @@ class AIService {
         rawText: parsed.rawText,
       };
     } catch (e) {
-      console.error('Errore Tesseract OCR:', e);
-
-      return {
-        codiceFiscale: '',
-        cognome: '',
-        nome: '',
-        dataNascita: '',
-        comuneNascita: '',
-        sesso: '',
-        confidence: `Errore di lettura: ${e instanceof Error ? e.message : String(e)}`,
-      };
+      console.error('Errore OCR locale:', e);
+      const message = e instanceof Error ? e.message : String(e);
+      throw new Error(message || 'Lettura della tessera sanitaria non riuscita. Inserisci i dati manualmente.');
     }
   }
 
