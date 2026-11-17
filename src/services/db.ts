@@ -832,6 +832,8 @@ class DatabaseService {
       sales: Sale[];
       auditLogs: AuditLog[];
       notifications: AppNotification[];
+      settings: AppSettings;
+      customCategories: import('../types').CustomCategory[];
     } | null = null;
 
     try {
@@ -869,6 +871,8 @@ class DatabaseService {
         sales: this.sales,
         auditLogs: this.auditLogs,
         notifications: this.notifications,
+        settings: this.getSettings(),
+        customCategories: this.getCustomCategories(),
       };
 
       this.organization = data.organization || this.organization;
@@ -921,6 +925,8 @@ class DatabaseService {
         this.persist('sales', this.sales);
         this.persist('auditLogs', this.auditLogs);
         this.persist('notifications', this.notifications);
+        this.persist('settings', previous.settings);
+        this.persist('custom_categories', previous.customCategories);
       }
       return { success: false, message: 'Ripristino annullato: ' + (e?.message || 'errore di lettura del backup') };
     }
