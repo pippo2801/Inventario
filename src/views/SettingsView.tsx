@@ -297,9 +297,9 @@ export const SettingsView: React.FC = () => {
       {activeTab === 'backup' && (
         <div className="space-y-4 text-xs">
           <div className="p-4 rounded-xl bg-teal-950/40 border border-teal-800/60 text-slate-300">
-            <h3 className="font-bold text-white mb-1">Regola dei 3 Backup (Sezione 42)</h3>
+            <h3 className="font-bold text-white mb-1">Backup locale e copie manuali</h3>
             <p>
-              1. Archivio locale sullo smartphone • 2. Backup JSON esportato in una posizione sicura • 3. Verifica periodica del ripristino.
+              I dati restano su questo smartphone. Le copie JSON devono essere esportate manualmente: non viene eseguito alcun backup automatico o caricamento cloud.
             </p>
           </div>
 
@@ -311,7 +311,7 @@ export const SettingsView: React.FC = () => {
                   <span>Crea Backup Completo Adesso</span>
                 </h4>
                 <p className="text-slate-400 mt-1">
-                  Genera ed esporta un file JSON contenente l'intero inventario, schede clienti, prescrizioni, storico vendite e log di controllo.
+                  Genera un file JSON con inventario, clienti, prescrizioni, vendite, utenti e impostazioni. Contiene dati personali e sanitari: conservalo in una posizione protetta e non condividerlo.
                 </p>
               </div>
 
