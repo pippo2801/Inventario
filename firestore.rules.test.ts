@@ -72,8 +72,8 @@ describe('Firestore Security Rules', () => {
   // Helper to set up user documents with organization membership
   // Uses withSecurityRulesDisabled() to bypass rules for test setup
   async function setupUsers() {
-    await testEnv.withSecurityRulesDisabled(async (rawDb) => {
-      const db = asCompat(rawDb);
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = asCompat(context.firestore());
       // Main organization users
       await db.collection('users').doc('admin-uid').set({
         role: 'Amministratore',
