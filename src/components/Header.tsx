@@ -55,12 +55,7 @@ export const Header: React.FC<HeaderProps> = ({
             ? 'Offline'
             : 'Conflitto';
 
-  const syncTooltip =
-    syncStatus.state === 'offline'
-      ? 'Stato: Offline. Clicca per andare online.'
-      : syncStatus.state === 'online'
-        ? 'Stato: Online. Clicca per simulare offline.'
-        : `Stato: ${syncLabel}. La sincronizzazione è automatica.`;
+  const syncTooltip = 'Modalità locale: i dati sono salvati soltanto su questo dispositivo. Nessuna sincronizzazione cloud.';
 
   return (
     <header className="sticky top-0 z-40 border-b border-[#ddd7ce] bg-[#f7f4ee]/95 text-[#292725] backdrop-blur-xl">
@@ -81,38 +76,18 @@ export const Header: React.FC<HeaderProps> = ({
         {/* CONTROLLI — SOLO SYNC + NOTIFICHE */}
         <div className="flex shrink-0 items-center gap-1">
 
-          {/* SYNC */}
-          <button
+          {/* STATO LOCALE: nessuna sincronizzazione cloud attiva */}
+          <div
             id="btn-sync-status"
-            onClick={() => db.toggleOfflineMode()}
             title={syncTooltip}
             aria-label={syncTooltip}
-            className="group flex h-10 items-center gap-2 rounded-full border border-transparent px-2.5 text-[#77716a] transition-all hover:border-[#d2cbc1] hover:bg-white hover:text-[#514d48] sm:px-3"
+            className="flex h-10 items-center gap-2 rounded-full border border-transparent px-2.5 text-[#77716a] sm:px-3"
           >
-            {syncStatus.state === 'synced' && (
-              <CheckCircle2 className="h-4 w-4 text-[#66816f]" />
-            )}
-
-            {syncStatus.state === 'syncing' && (
-              <RefreshCw className="h-4 w-4 animate-spin text-[#a88655]" />
-            )}
-
-            {syncStatus.state === 'offline' && (
-              <WifiOff className="h-4 w-4 text-[#9b666d]" />
-            )}
-
-            {syncStatus.state === 'online' && (
-              <Wifi className="h-4 w-4 text-[#66816f]" />
-            )}
-
-            {syncStatus.state === 'conflict' && (
-              <AlertTriangle className="h-4 w-4 text-[#a88655]" />
-            )}
-
+            <WifiOff className="h-4 w-4 text-[#9b666d]" />
             <span className="hidden text-[9px] font-semibold uppercase tracking-[0.12em] sm:inline">
-              {syncLabel}
+              Locale
             </span>
-          </button>
+          </div>
 
           {/* NOTIFICHE */}
           <div className="relative">
