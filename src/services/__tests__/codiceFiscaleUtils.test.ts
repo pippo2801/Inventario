@@ -27,7 +27,7 @@ describe('Codice Fiscale Utilities', () => {
 
     it('should normalize I->1 only in digit positions', () => {
       const cfWithIInDigits = 'RSSMRA80C1I5H501Z'; // I at position 10 (should be 1)
-      expect(normalizeCFString(cfWithIInDigits)).toBe('RSSMRA80C15H501M');
+      expect(normalizeCFString(cfWithIInDigits)).toBe('RSSMRA80C15H501Z');
     });
 
     it('should NOT normalize I in letter positions', () => {
@@ -53,7 +53,7 @@ describe('Codice Fiscale Utilities', () => {
 
     it('should handle multiple corrections at once', () => {
       // Multiple OCR errors in digit positions
-      const cf = 'RSSMRA8OC1SH5O1Z'; // O at 7, S at 10, O at 13
+      const cf = 'RSSMRA8OC1SH5O1M'; // O at 7, S at 10, O at 13
       expect(normalizeCFString(cf)).toBe('RSSMRA80C15H501M');
     });
 
