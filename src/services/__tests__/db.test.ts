@@ -233,6 +233,47 @@ describe('DatabaseService', () => {
       const soldProduct = db.getEyeglassById(eyeglass.id);
       expect(soldProduct!.status).toBe('Venduto');
       expect(soldProduct!.isShowcase).toBe(false);
+      expect(() => db.executeFastSale({
+        productId: eyeglass.id,
+        clientName: 'Seconda vendita',
+        discount: 0,
+        paymentMethod: 'Contanti',
+        receiptReference: 'RCPT-002',
+      })).toThrow('Questo occhiale non è disponibile per la vendita');
+    });
+
+    it('should reject negative and excessive discounts without changing stock', async () => {
+      await setupDb();
+      const eyeglass = db.addEyeglass({
+        sku: 'DISCOUNT-001',
+        supplierCode: 'SUP-001',
+        brand: 'Test',
+        model: 'DiscountModel',
+        color: 'Black',
+        gender: 'Unisex',
+        purchasePrice: 40,
+        salePrice: 100,
+        isPromo: false,
+        isShowcase: false,
+        shape: 'Rettangolare',
+        material: 'Acetato',
+        location: 'A1',
+        stockDate: new Date().toISOString(),
+        notes: '',
+        status: 'Disponibile',
+        imageUrl: '',
+      });
+      const saleInput = {
+        productId: eyeglass.id,
+        clientName: 'Cliente test',
+        paymentMethod: 'Contanti' as const,
+        receiptReference: 'RCPT-DISCOUNT',
+      };
+
+      expect(() => db.executeFastSale({ ...saleInput, discount: -1 })).toThrow('Sconto non valido');
+      expect(() => db.executeFastSale({ ...saleInput, discount: 101 })).toThrow('Sconto non valido');
+      expect(db.getEyeglassById(eyeglass.id)?.status).toBe('Disponibile');
+      expect(db.getSales()).toHaveLength(0);
     });
 
     it('should restore eyeglass from sale and cancel the sale record', async () => {
