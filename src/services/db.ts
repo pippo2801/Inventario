@@ -231,7 +231,16 @@ class DatabaseService {
   }
 
   public addEyeglass(item: Omit<Eyeglass, 'id' | 'createdAt' | 'updatedAt' | 'createdBy' | 'updatedBy' | 'version' | 'deletedAt'>, isAiOrigin = false): Eyeglass {
-    const newId = 'OPT-' + String(this.eyeglasses.length + 1).padStart(3, '0');
+    const normalizedSku = item.sku.trim().toUpperCase();
+    if (!normalizedSku) throw new Error('Il codice SKU è obbligatorio');
+    if (this.eyeglasses.some(existing => existing.sku.trim().toUpperCase() === normalizedSku)) {
+      throw new Error(`Codice SKU già utilizzato: ${normalizedSku}`);
+    }
+    const maxNumericId = this.eyeglasses.reduce((max, existing) => {
+      const match = existing.id.match(/^OPT-(\\d+)$/);
+      return Math.max(max, match ? Number(match[1]) : 0);
+    }, 0);
+    const newId = 'OPT-' + String(maxNumericId + 1).padStart(3, '0');
     const now = new Date().toISOString();
     const newItem: Eyeglass = {
       ...item,
@@ -391,12 +400,21 @@ class DatabaseService {
     notes?: string;
   }): Sale {
     const product = this.getEyeglassById(data.productId);
-    if (!product) {
-      throw new Error('Prodotto non trovato');
+    if (!product || product.deletedAt !== null) {
+      throw new Error('Prodotto non trovato o presente nel cestino');
+    }
+    if (product.status !== 'Disponibile') {
+      throw new Error('Questo occhiale non è disponibile per la vendita');
     }
 
-    const effectiveListPrice = product.isPromo && product.promoPrice ? product.promoPrice : product.salePrice;
-    const finalPrice = Math.max(0, effectiveListPrice - data.discount);
+    const effectiveListPrice = product.isPromo && product.promoPrice != null ? product.promoPrice : product.salePrice;
+    if (!Number.isFinite(effectiveListPrice) || effectiveListPrice <= 0) {
+      throw new Error('Prezzo di vendita non valido');
+    }
+    if (!Number.isFinite(data.discount) || data.discount < 0 || data.discount > effectiveListPrice) {
+      throw new Error('Sconto non valido: deve essere compreso tra 0 e il prezzo di vendita');
+    }
+    const finalPrice = effectiveListPrice - data.discount;
     const estimatedGrossMargin = finalPrice - product.purchasePrice;
 
     const saleNumber = 'VND-' + new Date().getFullYear() + '-' + String(this.sales.length + 1).padStart(4, '0');
