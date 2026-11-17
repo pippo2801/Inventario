@@ -119,6 +119,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
       if (res.dataNascita) setBirthDate(res.dataNascita);
     } catch (err) {
       console.error('Errore OCR:', err);
+      alert(err instanceof Error ? err.message : 'Lettura OCR non riuscita. Inserisci i dati manualmente.');
     } finally {
       setOcrLoading(false);
     }
