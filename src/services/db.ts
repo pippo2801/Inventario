@@ -71,11 +71,13 @@ class DatabaseService {
     return fallback;
   }
 
-  private persist<T>(key: string, data: T) {
+  private persist<T>(key: string, data: T): boolean {
     try {
       localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(data));
+      return true;
     } catch (e) {
       console.warn(`Error saving ${key} to storage:`, e);
+      return false;
     }
   }
 
@@ -800,45 +802,127 @@ class DatabaseService {
   public exportBackupJson(): string {
     const backupData = {
       app: 'Studio Ottico Di Pietro',
+      schemaVersion: 2,
       version: '1.0.0',
       exportedAt: new Date().toISOString(),
       exportedBy: this.currentUser.name,
       organization: this.organization,
       users: this.users,
+      currentUser: this.currentUser,
       eyeglasses: this.eyeglasses,
       clients: this.clients,
       prescriptions: this.prescriptions,
       sales: this.sales,
       auditLogs: this.auditLogs,
+      notifications: this.notifications,
+      settings: this.getSettings(),
+      customCategories: this.getCustomCategories(),
     };
     return JSON.stringify(backupData, null, 2);
   }
 
   public importBackupJson(jsonString: string): { success: boolean; message: string } {
+    let previous: {
+      organization: Organization;
+      users: User[];
+      currentUser: User;
+      eyeglasses: Eyeglass[];
+      clients: Client[];
+      prescriptions: Prescription[];
+      sales: Sale[];
+      auditLogs: AuditLog[];
+      notifications: AppNotification[];
+    } | null = null;
+
     try {
       const data = JSON.parse(jsonString);
-      if (!data.eyeglasses || !Array.isArray(data.eyeglasses)) {
+      if (!data || typeof data !== 'object' || !Array.isArray(data.eyeglasses)) {
         return { success: false, message: 'Formato backup non valido: dati occhiali mancanti.' };
       }
 
-      if (data.organization) this.organization = data.organization;
-      if (data.eyeglasses) this.eyeglasses = data.eyeglasses;
-      if (data.clients) this.clients = data.clients;
-      if (data.prescriptions) this.prescriptions = data.prescriptions;
-      if (data.sales) this.sales = data.sales;
+      const arrayFields = ['users', 'clients', 'prescriptions', 'sales', 'auditLogs', 'notifications', 'customCategories'];
+      for (const field of arrayFields) {
+        if (data[field] !== undefined && !Array.isArray(data[field])) {
+          return { success: false, message: `Formato backup non valido: campo ${field} non valido.` };
+        }
+      }
+      if (data.organization !== undefined && (!data.organization || typeof data.organization !== 'object')) {
+        return { success: false, message: 'Formato backup non valido: dati dello studio non validi.' };
+      }
+      if (data.settings !== undefined && (!data.settings || typeof data.settings !== 'object' || Array.isArray(data.settings))) {
+        return { success: false, message: 'Formato backup non valido: impostazioni non valide.' };
+      }
 
-      this.persist('organization', this.organization);
-      this.persist('eyeglasses', this.eyeglasses);
-      this.persist('clients', this.clients);
-      this.persist('prescriptions', this.prescriptions);
-      this.persist('sales', this.sales);
+      const nextUsers: User[] = Array.isArray(data.users) && data.users.length ? data.users : this.users;
+      const nextCurrentUser: User = data.currentUser || nextUsers.find(user => user.id === this.currentUser.id) || nextUsers[0];
+      if (!nextCurrentUser || !nextUsers.some(user => user.id === nextCurrentUser.id)) {
+        return { success: false, message: 'Formato backup non valido: utente attivo non presente nell’elenco utenti.' };
+      }
+
+      previous = {
+        organization: this.organization,
+        users: this.users,
+        currentUser: this.currentUser,
+        eyeglasses: this.eyeglasses,
+        clients: this.clients,
+        prescriptions: this.prescriptions,
+        sales: this.sales,
+        auditLogs: this.auditLogs,
+        notifications: this.notifications,
+      };
+
+      this.organization = data.organization || this.organization;
+      this.users = nextUsers;
+      this.currentUser = nextCurrentUser;
+      this.eyeglasses = data.eyeglasses;
+      this.clients = data.clients || this.clients;
+      this.prescriptions = data.prescriptions || this.prescriptions;
+      this.sales = data.sales || this.sales;
+      this.auditLogs = data.auditLogs || this.auditLogs;
+      this.notifications = data.notifications || this.notifications;
+
+      const writes: Array<[string, unknown]> = [
+        ['organization', this.organization],
+        ['users', this.users],
+        ['currentUser', this.currentUser],
+        ['eyeglasses', this.eyeglasses],
+        ['clients', this.clients],
+        ['prescriptions', this.prescriptions],
+        ['sales', this.sales],
+        ['auditLogs', this.auditLogs],
+        ['notifications', this.notifications],
+        ['settings', data.settings || this.getSettings()],
+        ['custom_categories', data.customCategories || this.getCustomCategories()],
+      ];
+      for (const [key, value] of writes) {
+        if (!this.persist(key, value)) throw new Error(`Impossibile salvare il campo ${key} sul dispositivo.`);
+      }
 
       this.addAuditLog('Backup', 'RESTORE-' + Date.now(), 'MODIFICA', 'Ripristinato backup manuale dei dati');
       this.notify();
-
       return { success: true, message: 'Database ripristinato con successo!' };
     } catch (e: any) {
-      return { success: false, message: 'Errore di lettura file backup: ' + e.message };
+      if (previous) {
+        this.organization = previous.organization;
+        this.users = previous.users;
+        this.currentUser = previous.currentUser;
+        this.eyeglasses = previous.eyeglasses;
+        this.clients = previous.clients;
+        this.prescriptions = previous.prescriptions;
+        this.sales = previous.sales;
+        this.auditLogs = previous.auditLogs;
+        this.notifications = previous.notifications;
+        this.persist('organization', this.organization);
+        this.persist('users', this.users);
+        this.persist('currentUser', this.currentUser);
+        this.persist('eyeglasses', this.eyeglasses);
+        this.persist('clients', this.clients);
+        this.persist('prescriptions', this.prescriptions);
+        this.persist('sales', this.sales);
+        this.persist('auditLogs', this.auditLogs);
+        this.persist('notifications', this.notifications);
+      }
+      return { success: false, message: 'Ripristino annullato: ' + (e?.message || 'errore di lettura del backup') };
     }
   }
 
