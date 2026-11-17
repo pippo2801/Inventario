@@ -110,6 +110,7 @@ export const UniversalSearchModal: React.FC<UniversalSearchModalProps> = ({
         setVisualResult(result);
       } catch (err) {
         console.error(err);
+        alert(err instanceof Error ? err.message : 'Analisi immagine non disponibile. Usa la ricerca testuale oppure configura un provider IA.');
       } finally {
         setLoading(false);
       }
