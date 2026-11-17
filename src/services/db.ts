@@ -237,13 +237,14 @@ class DatabaseService {
       throw new Error(`Codice SKU già utilizzato: ${normalizedSku}`);
     }
     const maxNumericId = this.eyeglasses.reduce((max, existing) => {
-      const match = existing.id.match(/^OPT-(\\d+)$/);
+      const match = existing.id.match(/^OPT-(\d+)$/);
       return Math.max(max, match ? Number(match[1]) : 0);
     }, 0);
     const newId = 'OPT-' + String(maxNumericId + 1).padStart(3, '0');
     const now = new Date().toISOString();
     const newItem: Eyeglass = {
       ...item,
+      sku: normalizedSku,
       id: newId,
       createdAt: now,
       updatedAt: now,
