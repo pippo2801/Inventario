@@ -51,7 +51,8 @@ class DatabaseService {
       const match = item.id.match(/^OPT-(\d+)$/);
       return Math.max(max, match ? Number(match[1]) : 0);
     }, 0);
-    this.eyeglassSequence = Math.max(this.load<number>('eyeglassSequence', 1), maxEyeglassId + 1);
+    const storedSequence = this.load<number>('eyeglassSequence', 1);
+    this.eyeglassSequence = Math.max(Number.isSafeInteger(storedSequence) && storedSequence > 0 ? storedSequence : 1, maxEyeglassId + 1);
     this.clients = this.load('clients', initialClients);
     this.prescriptions = this.load('prescriptions', initialPrescriptions);
     this.sales = this.load('sales', initialSales);
@@ -990,6 +991,7 @@ class DatabaseService {
     this.persist('users', this.users);
     this.persist('currentUser', this.currentUser);
     this.persist('eyeglasses', this.eyeglasses);
+    this.persist('eyeglassSequence', this.eyeglassSequence);
     this.persist('clients', this.clients);
     this.persist('prescriptions', this.prescriptions);
     this.persist('sales', this.sales);
