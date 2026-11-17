@@ -421,7 +421,8 @@ describe('DatabaseService', () => {
       
       expect(stats.totalPieces).toBe(2);
       expect(stats.totalPurchaseValue).toBe(110);
-      expect(stats.totalRetailValue).toBe(220); // 100 + 120 (promo price)
+      expect(stats.totalRetailValue).toBe(250); // 100 + 150 (list prices)
+      expect(stats.totalPromoValue).toBe(220); // 100 + 120 (promo price)
       expect(stats.showcasePieces).toBe(1);
       expect(stats.promoPieces).toBe(1);
     });
