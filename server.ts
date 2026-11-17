@@ -101,15 +101,7 @@ app.post('/api/ai/visual-search', async (req, res) => {
 
     const ai = getGeminiClient();
     if (!ai) {
-      return res.json({
-        shape: 'Aviator / Goccia',
-        color: 'Nero / Metallo',
-        frameType: 'Cerchiato Metallo',
-        detectedBrand: null,
-        detectedModelOrCode: null,
-        confidence: 'Bassa',
-        stimaIaDetails: 'Analisi locale (Modalità Offline/Chiave API non configurata). Stima visiva orientativa.',
-      });
+      return res.status(503).json({ error: 'Analisi immagini non disponibile: configura un provider IA. Nessun dato è stato inventato.' });
     }
 
     // Clean base64
@@ -174,16 +166,7 @@ app.post('/api/ai/video-search', async (req, res) => {
 
     const ai = getGeminiClient();
     if (!ai) {
-      return res.json({
-        shape: 'Rettangolare',
-        color: 'Tartarugato',
-        frameType: 'Acetato',
-        detectedBrand: null,
-        detectedModelOrCode: null,
-        confidence: 'Media',
-        stimaIaDetails: 'Analisi da video: rilevata forma frontale e finitura tartarugata.',
-        usefulFramesCount: Math.min(3, frames.length),
-      });
+      return res.status(503).json({ error: 'Analisi video non disponibile: configura un provider IA. Nessun risultato simulato è stato restituito.' });
     }
 
     // Limit to up to 4 key frames to keep payload efficient
@@ -249,15 +232,7 @@ app.post('/api/ai/ocr-codice-fiscale', async (req, res) => {
 
     const ai = getGeminiClient();
     if (!ai) {
-      return res.json({
-        codiceFiscale: 'RSSMRA80A01H501U',
-        cognome: 'ROSSI',
-        nome: 'MARIO',
-        dataNascita: '1980-01-01',
-        comuneNascita: 'ROMA',
-        sesso: 'M',
-        confidence: 'Simulazione Offline',
-      });
+      return res.status(503).json({ error: 'OCR tessera sanitaria server non disponibile. Usa la lettura OCR locale del dispositivo.' });
     }
 
     const cleanData = imageBase64.replace(/^data:image\/\w+;base64,/, '');
@@ -321,16 +296,7 @@ app.post('/api/ai/ocr-prescription', async (req, res) => {
 
     const ai = getGeminiClient();
     if (!ai) {
-      return res.json({
-        doctorOrOptometrist: 'Dott. Oculista (Rilevato)',
-        date: new Date().toISOString().slice(0, 10),
-        od: { sph: -2.25, cyl: -0.50, ax: 90, add: 0.0 },
-        os: { sph: -2.00, cyl: -0.75, ax: 85, add: 0.0 },
-        pd: { od: 31.5, os: 31.5, total: 63.0 },
-        mountingHeight: 21.0,
-        notes: 'Dati rilevati da ricetta. Verificare prima di confermare.',
-        confidence: 'Simulazione Offline',
-      });
+      return res.status(503).json({ error: 'OCR prescrizione non disponibile offline. Inserisci i valori manualmente oppure configura un provider IA.' });
     }
 
     const cleanData = imageBase64.replace(/^data:image\/\w+;base64,/, '');
