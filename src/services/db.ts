@@ -285,6 +285,14 @@ class DatabaseService {
     if (index === -1) return undefined;
 
     const oldItem = this.eyeglasses[index];
+    if (updates.sku !== undefined) {
+      const normalizedSku = updates.sku.trim().toUpperCase();
+      if (!normalizedSku) throw new Error('Il codice SKU è obbligatorio');
+      if (this.eyeglasses.some((existing) => existing.id !== id && (existing.sku || '').trim().toUpperCase() === normalizedSku)) {
+        throw new Error(`Codice SKU già utilizzato: ${normalizedSku}`);
+      }
+      updates = { ...updates, sku: normalizedSku };
+    }
     const updated: Eyeglass = {
       ...oldItem,
       ...updates,
