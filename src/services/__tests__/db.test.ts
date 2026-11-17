@@ -166,6 +166,36 @@ describe('DatabaseService', () => {
       expect(eyeglass.status).toBe('Disponibile');
     });
 
+    it('should keep product IDs unique after permanent deletion and reject duplicate SKUs', async () => {
+      await setupDb();
+      const input = {
+        sku: 'SEQ-1',
+        supplierCode: 'SUP',
+        brand: 'Test',
+        model: 'Sequence',
+        color: 'Black',
+        gender: 'Unisex',
+        purchasePrice: 10,
+        salePrice: 20,
+        isPromo: false,
+        isShowcase: false,
+        shape: 'Rotondo',
+        material: 'Metallo',
+        location: 'A1',
+        stockDate: new Date().toISOString(),
+        notes: '',
+        status: 'Disponibile',
+        imageUrl: '',
+      };
+      const first = db.addEyeglass(input);
+      db.permanentlyDeleteEyeglass(first.id);
+      const second = db.addEyeglass({ ...input, sku: 'SEQ-2' });
+
+      expect(first.id).toBe('OPT-001');
+      expect(second.id).toBe('OPT-002');
+      expect(() => db.addEyeglass({ ...input, sku: ' seq-2 ' })).toThrow('Codice SKU già utilizzato: SEQ-2');
+    });
+
     it('should execute fast sale and mark product as Venduto', async () => {
       await setupDb();
       const eyeglass = db.addEyeglass({
