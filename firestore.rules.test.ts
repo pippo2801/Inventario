@@ -311,12 +311,7 @@ describe('Firestore Security Rules', () => {
 
     it('DENIES operator updating eyeglass in other org', async () => {
       const db = asCompat(testEnv.authenticatedContext('operator-uid').firestore());
-      const docRef = await db.collection('eyeglasses').add({
-        brand: 'Other',
-        model: 'Model',
-        salePrice: 100,
-        organizationId: 'org-other',
-      });
+      const docRef = db.collection('eyeglasses').doc('eg-other');
       await assertFails(docRef.update({ salePrice: 200 }));
     });
   });
@@ -360,19 +355,13 @@ describe('Firestore Security Rules', () => {
 
     it('DENIES updating audit logs (immutable)', async () => {
       const db = asCompat(testEnv.authenticatedContext('admin-uid').firestore());
-      const docRef = await db.collection('auditLogs').add({ 
-        entityType: 'Test',
-        organizationId: 'org-main',
-      });
+      const docRef = db.collection('auditLogs').doc('log-1');
       await assertFails(docRef.update({ details: 'Modified' }));
     });
 
     it('DENIES deleting audit logs (immutable)', async () => {
       const db = asCompat(testEnv.authenticatedContext('admin-uid').firestore());
-      const docRef = await db.collection('auditLogs').add({ 
-        entityType: 'Test',
-        organizationId: 'org-main',
-      });
+      const docRef = db.collection('auditLogs').doc('log-1');
       await assertFails(docRef.delete());
     });
   });
