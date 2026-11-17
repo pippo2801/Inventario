@@ -32,6 +32,7 @@ class DatabaseService {
   private users: User[];
   private currentUser: User;
   private eyeglasses: Eyeglass[];
+  private eyeglassSequence: number;
   private clients: Client[];
   private prescriptions: Prescription[];
   private sales: Sale[];
@@ -46,6 +47,11 @@ class DatabaseService {
     this.users = this.load('users', initialUsers);
     this.currentUser = this.load('currentUser', this.users[0]);
     this.eyeglasses = this.load('eyeglasses', initialEyeglasses);
+    const maxEyeglassId = this.eyeglasses.reduce((max, item) => {
+      const match = item.id.match(/^OPT-(\d+)$/);
+      return Math.max(max, match ? Number(match[1]) : 0);
+    }, 0);
+    this.eyeglassSequence = Math.max(this.load<number>('eyeglassSequence', 1), maxEyeglassId + 1);
     this.clients = this.load('clients', initialClients);
     this.prescriptions = this.load('prescriptions', initialPrescriptions);
     this.sales = this.load('sales', initialSales);
@@ -236,11 +242,9 @@ class DatabaseService {
     if (this.eyeglasses.some(existing => existing.sku.trim().toUpperCase() === normalizedSku)) {
       throw new Error(`Codice SKU già utilizzato: ${normalizedSku}`);
     }
-    const maxNumericId = this.eyeglasses.reduce((max, existing) => {
-      const match = existing.id.match(/^OPT-(\d+)$/);
-      return Math.max(max, match ? Number(match[1]) : 0);
-    }, 0);
-    const newId = 'OPT-' + String(maxNumericId + 1).padStart(3, '0');
+    const newId = 'OPT-' + String(this.eyeglassSequence).padStart(3, '0');
+    this.eyeglassSequence += 1;
+    this.persist('eyeglassSequence', this.eyeglassSequence);
     const now = new Date().toISOString();
     const newItem: Eyeglass = {
       ...item,
@@ -256,6 +260,7 @@ class DatabaseService {
 
     this.eyeglasses.unshift(newItem);
     this.persist('eyeglasses', this.eyeglasses);
+    this.persist('eyeglassSequence', this.eyeglassSequence);
 
     this.addAuditLog(
       'Prodotto',
@@ -822,6 +827,7 @@ class DatabaseService {
     const backupData = {
       app: 'Studio Ottico Di Pietro',
       schemaVersion: 2,
+      eyeglassSequence: this.eyeglassSequence,
       version: '1.0.0',
       exportedAt: new Date().toISOString(),
       exportedBy: this.currentUser.name,
@@ -853,6 +859,7 @@ class DatabaseService {
       notifications: AppNotification[];
       settings: AppSettings;
       customCategories: import('../types').CustomCategory[];
+      eyeglassSequence: number;
     } | null = null;
 
     try {
@@ -892,12 +899,22 @@ class DatabaseService {
         notifications: this.notifications,
         settings: this.getSettings(),
         customCategories: this.getCustomCategories(),
+        eyeglassSequence: this.eyeglassSequence,
       };
 
       this.organization = data.organization || this.organization;
       this.users = nextUsers;
       this.currentUser = nextCurrentUser;
       this.eyeglasses = data.eyeglasses;
+      const restoredMaxId = this.eyeglasses.reduce((max: number, item: Eyeglass) => {
+        const match = item.id.match(/^OPT-(\d+)$/);
+        return Math.max(max, match ? Number(match[1]) : 0);
+      }, 0);
+      this.eyeglassSequence = Math.max(
+        this.eyeglassSequence,
+        Number(data.eyeglassSequence) || 1,
+        restoredMaxId + 1
+      );
       this.clients = data.clients || this.clients;
       this.prescriptions = data.prescriptions || this.prescriptions;
       this.sales = data.sales || this.sales;
@@ -909,6 +926,7 @@ class DatabaseService {
         ['users', this.users],
         ['currentUser', this.currentUser],
         ['eyeglasses', this.eyeglasses],
+        ['eyeglassSequence', this.eyeglassSequence],
         ['clients', this.clients],
         ['prescriptions', this.prescriptions],
         ['sales', this.sales],
@@ -930,6 +948,7 @@ class DatabaseService {
         this.users = previous.users;
         this.currentUser = previous.currentUser;
         this.eyeglasses = previous.eyeglasses;
+        this.eyeglassSequence = previous.eyeglassSequence;
         this.clients = previous.clients;
         this.prescriptions = previous.prescriptions;
         this.sales = previous.sales;
@@ -939,6 +958,7 @@ class DatabaseService {
         this.persist('users', this.users);
         this.persist('currentUser', this.currentUser);
         this.persist('eyeglasses', this.eyeglasses);
+        this.persist('eyeglassSequence', this.eyeglassSequence);
         this.persist('clients', this.clients);
         this.persist('prescriptions', this.prescriptions);
         this.persist('sales', this.sales);
@@ -956,6 +976,10 @@ class DatabaseService {
     this.users = initialUsers;
     this.currentUser = initialUsers[0];
     this.eyeglasses = initialEyeglasses;
+    this.eyeglassSequence = this.eyeglasses.reduce((max, item) => {
+      const match = item.id.match(/^OPT-(\d+)$/);
+      return Math.max(max, match ? Number(match[1]) : 0);
+    }, 0) + 1;
     this.clients = initialClients;
     this.prescriptions = initialPrescriptions;
     this.sales = initialSales;
