@@ -59,8 +59,8 @@ class DatabaseService {
     this.auditLogs = this.load('auditLogs', initialAuditLogs);
     this.notifications = this.load('notifications', initialNotifications);
     this.syncStatus = {
-      state: 'synced',
-      lastSyncTimestamp: new Date().toISOString(),
+      state: 'offline',
+      lastSyncTimestamp: '',
       pendingChangesCount: 0,
       activeDevice: 'A',
     };
