@@ -9,7 +9,7 @@ Sistema gestionale e di intelligenza artificiale multimodale sviluppato per lo *
 ### 1. 🔍 Ricerca Intelligente & AI Multimodale
 - **Riconoscimento Visivo da Fotocamera / Upload**: analisi istantanea di foto e video per identificare brand, modello, forma della montatura (aviator, cat-eye, pantografo, rotondo, ecc.), colore e finitura metallica/acetato.
 - **Ricerche in Linguaggio Naturale**: elaborazione semantica delle richieste (es. *"Mostrami occhiali da donna dorati sotto i 150 euro"* oppure *"Dov'è il Ray-Ban Aviator?"*).
-- **Fallback Euristico Offline**: funzionamento garantito al banco anche in assenza temporanea di connettività internet.
+- **Ricerca locale**: consultazione dell'inventario già salvato sul dispositivo anche senza connessione. L'analisi visiva IA richiede invece un servizio configurato e raggiungibile.
 
 ### 2. 🗂️ Gestione Inventario, Posizioni & Vetrina
 - Scheda tecnica completa di ogni montatura: marca, modello, calibro, ponte, asta, forma, materiale, colore, fornitore, prezzo di acquisto e prezzo di vendita.
@@ -44,7 +44,7 @@ Sistema gestionale e di intelligenza artificiale multimodale sviluppato per lo *
 
 ## 🛠️ Stack Tecnologico
 
-- **Frontend**: React 18, TypeScript, Tailwind CSS, Lucide Icons
+- **Frontend**: React 19, TypeScript, Tailwind CSS, Lucide Icons
 - **Backend / API**: Node.js, Express, tsx, esbuild
 - **Intelligenza Artificiale**: Google Gemini Multimodal API (`@google/genai`) con fallback euristico locale
 - **Build Tool**: Vite
@@ -74,7 +74,7 @@ Sistema gestionale e di intelligenza artificiale multimodale sviluppato per lo *
    ```bash
    npm run dev
    ```
-   L'applicazione sarà accessibile su `http://localhost:3000`.
+   L'indirizzo di sviluppo viene mostrato dal server nel terminale all'avvio.
 
 5. **Build di produzione**:
    ```bash
