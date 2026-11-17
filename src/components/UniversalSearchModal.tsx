@@ -118,32 +118,8 @@ export const UniversalSearchModal: React.FC<UniversalSearchModalProps> = ({
   };
 
   const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setLoading(true);
-    setLoadingText('Sto estraendo fotogrammi utili (frontale, aste, codice)...');
-    setNaturalResult(null);
-    setVisualResult(null);
-
-    // Sample mock frames from video file
-    setTimeout(async () => {
-      setLoadingText('Sto confrontando i fotogrammi utili con l\'inventario reale...');
-      // Simulated frame sequence
-      const sampleFrames = [
-        'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBD...',
-        'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBD...',
-        'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBD...',
-      ];
-      try {
-        const result = await aiService.videoSearchEyeglass(sampleFrames);
-        setVideoResult(result);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    }, 1500);
+    e.target.value = '';
+    alert('La ricerca da video non è ancora implementata: non verranno analizzati fotogrammi simulati. Usa una foto reale oppure la ricerca testuale.');
   };
 
   const handleBarcodeSearch = (barcodeText: string) => {
@@ -168,7 +144,7 @@ export const UniversalSearchModal: React.FC<UniversalSearchModalProps> = ({
                 Ricerca Universale Intelligente
               </h2>
               <p className="text-xs text-teal-300/80">
-                Interroga l'inventario reale tramite linguaggio naturale, foto o video
+                Interroga l'inventario locale tramite linguaggio naturale o foto
               </p>
             </div>
           </div>
@@ -212,15 +188,12 @@ export const UniversalSearchModal: React.FC<UniversalSearchModalProps> = ({
 
           <button
             id="tab-search-video"
-            onClick={() => setMode('video')}
-            className={`pb-2.5 px-3 flex items-center gap-1.5 border-b-2 transition-colors ${
-              mode === 'video'
-                ? 'border-teal-400 text-teal-300 font-semibold'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
+            disabled
+            title="Ricerca video non ancora disponibile"
+            className="pb-2.5 px-3 flex items-center gap-1.5 border-b-2 border-transparent text-slate-500 opacity-60 cursor-not-allowed"
           >
             <Video className="w-3.5 h-3.5" />
-            <span>Ricerca da Video</span>
+            <span>Video (in sviluppo)</span>
           </button>
 
           <button
@@ -337,7 +310,7 @@ export const UniversalSearchModal: React.FC<UniversalSearchModalProps> = ({
                   Carica o registra un breve video dell'occhiale
                 </p>
                 <p className="text-xs text-slate-400 max-w-md">
-                  Il sistema estrae fotogrammi multipli: vista frontale (forma), laterale (aste/logo) e codici per ricercare nell'inventario reale
+                  La ricerca video non è ancora disponibile. Per evitare risultati inventati, usa una fotografia reale dell'occhiale.
                 </p>
                 <span className="mt-2 text-xs px-3 py-1 bg-teal-600 hover:bg-teal-500 text-white rounded-lg font-medium inline-flex items-center gap-1">
                   <Upload className="w-3 h-3" /> Seleziona Video
