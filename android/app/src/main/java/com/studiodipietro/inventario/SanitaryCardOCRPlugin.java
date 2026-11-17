@@ -36,10 +36,24 @@ public class SanitaryCardOCRPlugin extends Plugin {
             }
 
             byte[] imageBytes = Base64.decode(cleanBase64, Base64.DEFAULT);
+
+            // Read image dimensions first and downsample large phone photos to
+            // avoid excessive memory use inside the Android WebView process.
+            BitmapFactory.Options bounds = new BitmapFactory.Options();
+            bounds.inJustDecodeBounds = true;
+            BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length, bounds);
+
+            BitmapFactory.Options decodeOptions = new BitmapFactory.Options();
+            decodeOptions.inSampleSize = 1;
+            while (bounds.outWidth / decodeOptions.inSampleSize > 2048
+                || bounds.outHeight / decodeOptions.inSampleSize > 2048) {
+                decodeOptions.inSampleSize *= 2;
+            }
             Bitmap bitmap = BitmapFactory.decodeByteArray(
                 imageBytes,
                 0,
-                imageBytes.length
+                imageBytes.length,
+                decodeOptions
             );
 
             if (bitmap == null) {
