@@ -107,8 +107,8 @@ describe('Firestore Security Rules', () => {
   // Helper to create test data with security rules disabled
   // Use this for test data that would be blocked by rules (cross-org data, audit logs, etc.)
   async function setupTestDataWithRulesDisabled() {
-    await testEnv.withSecurityRulesDisabled(async (rawDb) => {
-      const db = asCompat(rawDb);
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = asCompat(context.firestore());
     
     // Cross-org eyeglasses
     await db.collection('eyeglasses').doc('eg-1').set({
