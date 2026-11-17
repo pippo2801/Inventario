@@ -310,7 +310,7 @@ Estrai con cura i parametri di rifrazione sia per Occhio Destro (OD) che per Occ
 - Addizione (ADD): numero se presente per presbiopia (es. +1.50, +2.00), altrimenti 0
 - Prisma e Base: se specificati
 - Distanza Pupillare (PD): totale e/o monoculare (OD / OS) in mm se presente (es. total: 63, od: 31.5, os: 31.5)
-- Altezza montaggio: numero in mm se indicato, altrimenti 20
+- Altezza montaggio: estrai solo se chiaramente indicata; se assente o illeggibile restituisci null, non stimare né inventare valori
 - Data prescrizione (AAAA-MM-GG)
 - Medico o studio oculistico intestatario
 - Eventuali note
@@ -340,7 +340,7 @@ Rispondi RIGOROSAMENTE in formato JSON:
     "os": number,
     "total": number
   },
-  "mountingHeight": number,
+  "mountingHeight": number | null,
   "notes": string,
   "confidence": string
 }
