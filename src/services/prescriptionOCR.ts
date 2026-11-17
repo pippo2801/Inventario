@@ -18,19 +18,30 @@ function numbersFromLine(line: string): number[] {
 }
 
 function readEyeRow(lines: string[], eye: 'OD' | 'OS'): OphthalmicEyeData | null {
-  const marker = eye === 'OD' ? /\bOD\b|OCCHIO\s+DESTRO|DX\b/i : /\bOS\b|OCCHIO\s+SINISTRO|SX\b/i;
+  const marker = eye === 'OD' ? /\\bOD\\b|OCCHIO\\s+DESTRO|DX\\b/i : /\\bOS\\b|OCCHIO\\s+SINISTRO|SX\\b/i;
+  const otherMarker = eye === 'OD' ? /\\bOS\\b|OCCHIO\\s+SINISTRO|SX\\b/i : /\\bOD\\b|OCCHIO\\s+DESTRO|DX\\b/i;
+
   for (let i = 0; i < lines.length; i++) {
     if (!marker.test(lines[i])) continue;
-    const candidates = [lines[i], lines[i + 1] || ''];
-    for (const candidate of candidates) {
-      const values = numbersFromLine(candidate.replace(marker, ' '));
-      if (values.length >= 3) {
-        const [sph, cyl, ax, add = 0] = values;
-        if (ax < 0 || ax > 180 || !Number.isInteger(ax)) continue;
-        return { sph, cyl, ax, add };
+
+    const sameLineValues = numbersFromLine(lines[i].replace(marker, ' '));
+    let values = sameLineValues;
+
+    // Some prescriptions put the OD/OS label on a separate line from the values.
+    if (values.length < 3) {
+      const nextLine = lines[i + 1] || '';
+      if (nextLine && !otherMarker.test(nextLine)) {
+        values = numbersFromLine(nextLine);
       }
     }
+
+    if (values.length < 3) return null;
+
+    const [sph, cyl, ax, add = 0] = values;
+    if (ax < 0 || ax > 180 || !Number.isInteger(ax)) return null;
+    return { sph, cyl, ax, add };
   }
+
   return null;
 }
 
