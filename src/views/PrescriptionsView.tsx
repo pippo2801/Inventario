@@ -106,6 +106,28 @@ export const PrescriptionsView: React.FC = () => {
     reader.readAsDataURL(file);
   };
 
+  const resetNewPrescription = () => {
+    setClientId('');
+    setClientName('');
+    setDoctor('');
+    setDate(new Date().toISOString().slice(0, 10));
+    setLensType('Monofocali');
+    setTreatments('');
+    setMountingHeight(0);
+    setOdSph(0);
+    setOdCyl(0);
+    setOdAx(0);
+    setOdAdd(0);
+    setOsSph(0);
+    setOsCyl(0);
+    setOsAx(0);
+    setOsAdd(0);
+    setPdTotal(0);
+    setPdOd(0);
+    setPdOs(0);
+    setNotes('');
+  };
+
   const handleSave = (status: PrescriptionStatus = 'COMPLETA') => {
     if (!clientName.trim()) {
       alert('Inserire il nome del cliente intestatario.');
@@ -175,7 +197,7 @@ export const PrescriptionsView: React.FC = () => {
 
         <button
           id="btn-new-prescription"
-          onClick={() => setShowModal(true)}
+          onClick={() => { resetNewPrescription(); setShowModal(true); }}
           className="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-semibold text-xs shadow flex items-center gap-1.5 transition-all self-start sm:self-auto active:scale-95"
         >
           <PlusCircle className="w-4 h-4" />
