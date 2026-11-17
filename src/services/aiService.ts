@@ -184,15 +184,7 @@ class AIService {
       if (!res.ok) throw new Error('Visual search error');
       analysis = await res.json();
     } catch (e) {
-      analysis = {
-        shape: 'Aviator',
-        color: 'Oro / Verde',
-        frameType: 'Metallo',
-        detectedBrand: null,
-        detectedModelOrCode: null,
-        confidence: 'Bassa',
-        stimaIaDetails: 'Elaborazione locale stimata da caratteristiche visive di base.',
-      };
+      throw new Error('Analisi visiva non disponibile. Configura un provider IA e riprova.');
     }
 
     // Compare with REAL inventory in db (Principle 13: "Identificazione esatta", "Identificazione incerta", "Nessuna corrispondenza")
@@ -270,16 +262,7 @@ class AIService {
       if (!res.ok) throw new Error('Video search error');
       analysis = await res.json();
     } catch (e) {
-      analysis = {
-        shape: 'Rettangolare',
-        color: 'Nero',
-        frameType: 'Acetato',
-        detectedBrand: null,
-        detectedModelOrCode: null,
-        confidence: 'Media',
-        stimaIaDetails: 'Analisi da sequenza video.',
-        usefulFramesCount: Math.min(3, frames.length),
-      };
+      throw new Error('Analisi video non disponibile. Configura un provider IA e riprova.');
     }
 
     const inventory = db.getEyeglasses(false);
@@ -390,16 +373,7 @@ class AIService {
       if (!res.ok) throw new Error('OCR prescription error');
       return await res.json();
     } catch (e) {
-      return {
-        doctorOrOptometrist: 'Dott. Medico Oculista',
-        date: new Date().toISOString().slice(0, 10),
-        od: { sph: -2.00, cyl: -0.50, ax: 90, add: 0 },
-        os: { sph: -1.75, cyl: -0.75, ax: 85, add: 0 },
-        pd: { od: 31.5, os: 31.5, total: 63.0 },
-        mountingHeight: 21.0,
-        notes: 'Verificare sempre i valori rilevati prima di salvare.',
-        confidence: 'Lettura OCR stimata',
-      };
+      throw new Error('Lettura OCR della prescrizione non disponibile. Inserisci i dati manualmente e verifica la ricetta originale.');
     }
   }
 
