@@ -206,7 +206,7 @@ export function extractHealthCardFields(text: string): {
 
   const combinedName = readLabel('COGNOME\\s+E\\s+NOME');
   const combinedParts = combinedName.split(/\\s+/).filter(Boolean);
-  const cognome = readLabel('COGNOME') || combinedParts[0] || '';
+  const cognome = readLabel('COGNOME(?!\\s+E\\s+NOME)') || combinedParts[0] || '';
   const nome = readLabel('NOME') || (combinedParts.length > 1 ? combinedParts.slice(1).join(' ') : '');
   const comuneNascita = readLabel('LUOGO\\s+NASCITA|NASCITA\\s+COMUNE|COMUNE\\s+NASCITA|COMUNE');
   const sessoFromText = readLabel('SESSO').charAt(0) || '';
@@ -244,8 +244,10 @@ export function parseHealthCardOCR(text: string): {
   
   // Extract ALL candidates and pick the best
   const candidates = extractAllCodiceFiscaleCandidates(text);
-  const flattenedText = text.toUpperCase().replace(/[^A-Z0-9]/g, '');
-  const potentialMatches = flattenedText.match(/[A-Z]{6}[A-Z0-9]{2}[A-Z][A-Z0-9]{2}[A-Z][A-Z0-9]{3}[A-Z]/g) || [];
+  const potentialMatches = text.toUpperCase().split(/\\r?\\n/).flatMap(line => {
+    const codeLine = line.includes('CODICE FISCALE') ? line.split(/CODICE\\s*FISCALE\\s*[:\\-]?/i).pop() || '' : line;
+    return codeLine.replace(/[^A-Z0-9]/g, ' ').match(/[A-Z0-9]{16}/g) || [];
+  }).filter(candidate => /^[A-Z]{6}[A-Z0-9]{2}[A-Z][A-Z0-9]{2}[A-Z][A-Z0-9]{3}[A-Z]$/.test(candidate));
   const invalidCandidates = potentialMatches
     .map(candidate => normalizeCFString(candidate))
     .filter(candidate => !validateCodiceFiscaleChecksum(candidate));
