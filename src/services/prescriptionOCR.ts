@@ -18,8 +18,8 @@ function numbersFromLine(line: string): number[] {
 }
 
 function readEyeRow(lines: string[], eye: 'OD' | 'OS'): OphthalmicEyeData | null {
-  const marker = eye === 'OD' ? /\\bOD\\b|OCCHIO\\s+DESTRO|DX\\b/i : /\\bOS\\b|OCCHIO\\s+SINISTRO|SX\\b/i;
-  const otherMarker = eye === 'OD' ? /\\bOS\\b|OCCHIO\\s+SINISTRO|SX\\b/i : /\\bOD\\b|OCCHIO\\s+DESTRO|DX\\b/i;
+  const marker = eye === 'OD' ? /\bOD\b|OCCHIO\s+DESTRO|DX\b/i : /\bOS\b|OCCHIO\s+SINISTRO|SX\b/i;
+  const otherMarker = eye === 'OD' ? /\bOS\b|OCCHIO\s+SINISTRO|SX\b/i : /\bOD\b|OCCHIO\s+DESTRO|DX\b/i;
 
   for (let i = 0; i < lines.length; i++) {
     if (!marker.test(lines[i])) continue;
