@@ -127,7 +127,11 @@ service cloud.firestore {
     // Settings - only admins within their org
     match /settings/{settingId} {
       allow read: if isOperatorOrAdmin() && requesterBelongsToOrg(resource.data.organizationId);
-      allow write: if isAdmin() && resource.data.organizationId == getRequesterOrgId();
+      allow create: if isAdmin() && request.resource.data.organizationId == getRequesterOrgId();
+      allow update: if isAdmin() &&
+        resource.data.organizationId == getRequesterOrgId() &&
+        request.resource.data.organizationId == getRequesterOrgId();
+      allow delete: if isAdmin() && resource.data.organizationId == getRequesterOrgId();
     }
 
     // Sync status - operators and admins within their org
