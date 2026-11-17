@@ -216,15 +216,9 @@ class DatabaseService {
   }
 
   public toggleOfflineMode() {
-    if (this.syncStatus.state === 'offline') {
-      // Go online - state becomes 'online', not 'synced' (no fake sync)
-      this.syncStatus.state = 'online';
-      this.notify();
-    } else {
-      // Go offline
-      this.syncStatus.state = 'offline';
-      this.notify();
-    }
+    // Cloud sync is intentionally disabled in single-device mode.
+    this.syncStatus.state = 'offline';
+    this.notify();
   }
 
   // --- EYEGLASSES (PRODUCTS) ---
@@ -1159,7 +1153,7 @@ class DatabaseService {
         enabled: true,
       },
       sync: {
-        enabled: true,
+        enabled: false,
       },
     };
 
@@ -1172,7 +1166,7 @@ class DatabaseService {
       home: { ...defaults.home, ...saved.home },
       appearance: { ...defaults.appearance, ...saved.appearance },
       notifications: { ...defaults.notifications, ...saved.notifications },
-      sync: { ...defaults.sync, ...saved.sync },
+      sync: { enabled: false },
     };
   }
 
@@ -1319,35 +1313,9 @@ class DatabaseService {
 
 export const db = new DatabaseService();
 
-import { collection, doc, setDoc, getDocs, Timestamp } from 'firebase/firestore';
-import { dbFirestore } from './firebase';
-
 export async function syncWithCloud() {
-  try {
-    const localEyeglasses = JSON.parse(localStorage.getItem('eyeglasses') || '[]');
-    
-    for (const item of localEyeglasses) {
-      await setDoc(doc(dbFirestore, 'eyeglasses', item.id), {
-        ...item,
-        updatedAt: Timestamp.now()
-      }, { merge: true });
-    }
-
-    const querySnapshot = await getDocs(collection(dbFirestore, 'eyeglasses'));
-    const cloudEyeglasses: any[] = [];
-    querySnapshot.forEach((doc) => {
-      cloudEyeglasses.push(doc.data());
-    });
-
-    if (cloudEyeglasses.length > 0) {
-      localStorage.setItem('eyeglasses', JSON.stringify(cloudEyeglasses));
-    }
-
-    const syncTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    localStorage.setItem('lastSyncTime', syncTime);
-    return { success: true, time: syncTime };
-  } catch (error) {
-    console.error('Errore durante la sincronizzazione:', error);
-    return { success: false, error };
-  }
+  return {
+    success: false,
+    error: new Error('Sincronizzazione cloud disattivata: modalità dispositivo singolo.'),
+  };
 }
