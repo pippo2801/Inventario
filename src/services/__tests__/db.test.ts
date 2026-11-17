@@ -18,10 +18,14 @@ vi.stubGlobal('localStorage', mockStorage);
 let db: any;
 
 async function setupDb() {
+  mockStorage.clear();
+  // Keep the default local operator, but start every test with empty business data.
+  for (const key of ['eyeglasses', 'clients', 'prescriptions', 'sales', 'auditLogs', 'notifications']) {
+    mockStorage.setItem('studio_ottico_dipietro_' + key, '[]');
+  }
   vi.resetModules();
   const { db: freshDb } = await import('../db');
   db = freshDb;
-  mockStorage.clear();
   return db;
 }
 
@@ -31,9 +35,6 @@ describe('DatabaseService', () => {
     await setupDb();
   });
   
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
 
   describe('Client Management', () => {
     it('should create a new client with all required fields', async () => {
