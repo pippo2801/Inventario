@@ -29,24 +29,24 @@ export const PrescriptionsView: React.FC = () => {
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [lensType, setLensType] = useState<LensType>('Monofocali');
   const [treatments, setTreatments] = useState('Antiriflesso Top, Filtro Luce Blu');
-  const [mountingHeight, setMountingHeight] = useState<number>(20.5);
+  const [mountingHeight, setMountingHeight] = useState<number>(0);
 
   // Refraction OD
-  const [odSph, setOdSph] = useState<number>(-2.00);
-  const [odCyl, setOdCyl] = useState<number>(-0.50);
-  const [odAx, setOdAx] = useState<number>(90);
+  const [odSph, setOdSph] = useState<number>(0);
+  const [odCyl, setOdCyl] = useState<number>(0);
+  const [odAx, setOdAx] = useState<number>(0);
   const [odAdd, setOdAdd] = useState<number>(0);
 
   // Refraction OS
-  const [osSph, setOsSph] = useState<number>(-1.75);
-  const [osCyl, setOsCyl] = useState<number>(-0.75);
-  const [osAx, setOsAx] = useState<number>(85);
+  const [osSph, setOsSph] = useState<number>(0);
+  const [osCyl, setOsCyl] = useState<number>(0);
+  const [osAx, setOsAx] = useState<number>(0);
   const [osAdd, setOsAdd] = useState<number>(0);
 
   // Pupillary Distance
-  const [pdTotal, setPdTotal] = useState<number>(63);
-  const [pdOd, setPdOd] = useState<number>(31.5);
-  const [pdOs, setPdOs] = useState<number>(31.5);
+  const [pdTotal, setPdTotal] = useState<number>(0);
+  const [pdOd, setPdOd] = useState<number>(0);
+  const [pdOs, setPdOs] = useState<number>(0);
   const [notes, setNotes] = useState('');
 
   // OCR state
@@ -98,6 +98,7 @@ export const PrescriptionsView: React.FC = () => {
         if (res.notes) setNotes(res.notes);
       } catch (err) {
         console.error(err);
+        alert(err instanceof Error ? err.message : 'OCR non disponibile. Inserisci i dati manualmente e verifica la ricetta originale.');
       } finally {
         setOcrLoading(false);
       }
