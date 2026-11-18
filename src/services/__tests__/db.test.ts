@@ -273,6 +273,54 @@ describe('DatabaseService', () => {
       })).toThrow('Questo occhiale non è disponibile per la vendita');
     });
 
+    it('should roll back a sale if persisting the sales record fails', async () => {
+      await setupDb();
+      const eyeglass = db.addEyeglass({
+        sku: 'SALE-ROLLBACK-001',
+        supplierCode: 'SUP-001',
+        brand: 'Test',
+        model: 'RollbackModel',
+        color: 'Black',
+        gender: 'Unisex',
+        purchasePrice: 50,
+        salePrice: 100,
+        isPromo: false,
+        isShowcase: true,
+        shape: 'Rettangolare',
+        material: 'Acetato',
+        location: 'B1',
+        stockDate: new Date().toISOString(),
+        notes: '',
+        status: 'Disponibile',
+        imageUrl: '',
+      });
+
+      let failed = false;
+      vi.spyOn(mockStorage, 'setItem').mockImplementation((key: string, value: string) => {
+        if (!failed && key === 'studio_ottico_dipietro_sales') {
+          failed = true;
+          throw new Error('Storage quota exceeded');
+        }
+        mockStorage.store[key] = value;
+      });
+
+      expect(() => db.executeFastSale({
+        productId: eyeglass.id,
+        clientName: 'Cliente test',
+        discount: 0,
+        paymentMethod: 'Contanti',
+        receiptReference: 'RCPT-ROLLBACK',
+      })).toThrow('Vendita non registrata');
+
+      expect(db.getEyeglassById(eyeglass.id)?.status).toBe('Disponibile');
+      expect(db.getEyeglassById(eyeglass.id)?.isShowcase).toBe(true);
+      expect(db.getSales()).toHaveLength(0);
+      expect(JSON.parse(mockStorage.getItem('studio_ottico_dipietro_eyeglasses') || '[]')).toEqual(
+        expect.arrayContaining([expect.objectContaining({ id: eyeglass.id, status: 'Disponibile', isShowcase: true })])
+      );
+      expect(JSON.parse(mockStorage.getItem('studio_ottico_dipietro_sales') || '[]')).toEqual([]);
+    });
+
     it('should reject negative and excessive discounts without changing stock', async () => {
       await setupDb();
       const eyeglass = db.addEyeglass({
