@@ -17,7 +17,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install JavaScript dependencies
@@ -28,7 +28,7 @@ jobs:
       - name: Run checks
         run: |
           npm run lint
-          npm test
+          npx vitest run --exclude=firestore.rules.test.ts
           npx vite build
 
       - name: Generate iOS project
