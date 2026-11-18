@@ -271,7 +271,7 @@ export const PrescriptionsView: React.FC = () => {
 
             <div className="flex items-center justify-between text-[11px] text-slate-400">
               <span>Lenti: <b>{item.lensType}</b></span>
-              <span>PD Totale: <b>{item.pd?.total || 63} mm</b> • H: <b>{item.mountingHeight || 20} mm</b></span>
+              <span>PD Totale: <b>{item.pd?.total && item.pd.total > 0 ? `${item.pd.total} mm` : '—'}</b> • H: <b>{item.mountingHeight > 0 ? `${item.mountingHeight} mm` : '—'}</b></span>
             </div>
           </div>
         ))}
