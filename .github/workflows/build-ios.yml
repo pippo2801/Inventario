@@ -54,11 +54,11 @@ jobs:
 
       - name: Compile iPhone device target (unsigned)
         run: |
-          xcodebuild -project ios/App/App.xcodeproj \\
-            -scheme App \\
-            -destination 'generic/platform=iOS' \\
-            -configuration Debug \\
-            -derivedDataPath build/ios-device \\
+          xcodebuild -project ios/App/App.xcodeproj \
+            -scheme App \
+            -destination 'generic/platform=iOS' \
+            -configuration Debug \
+            -derivedDataPath build/ios-device \
             CODE_SIGNING_ALLOWED=NO build
 
       - name: Package simulator app
