@@ -451,16 +451,28 @@ class DatabaseService {
       deletedAt: null,
     };
 
-    // 1. Update product: status = 'Venduto', isShowcase = false
+    // 1. Update product and sales as one logical operation.
+    // If either storage write fails, restore the in-memory state and best-effort
+    // restore both persisted snapshots so a sale cannot be half-registered.
+    const productIndex = this.eyeglasses.findIndex((item) => item.id === product.id);
+    const previousProduct = { ...product };
+    const previousSales = [...this.sales];
+
     product.status = 'Venduto';
     product.isShowcase = false;
     product.updatedAt = now;
     product.updatedBy = this.currentUser.name;
-    this.persist('eyeglasses', this.eyeglasses);
-
-    // 2. Add to sales
     this.sales.unshift(sale);
-    this.persist('sales', this.sales);
+
+    const productSaved = this.persist('eyeglasses', this.eyeglasses);
+    const salesSaved = productSaved && this.persist('sales', this.sales);
+    if (!productSaved || !salesSaved) {
+      if (productIndex >= 0) this.eyeglasses[productIndex] = previousProduct;
+      this.sales = previousSales;
+      this.persist('eyeglasses', this.eyeglasses);
+      this.persist('sales', this.sales);
+      throw new Error('Vendita non registrata: impossibile salvare i dati sul dispositivo. Riprova dopo aver liberato spazio.');
+    }
 
     // 3. Audit log
     this.addAuditLog(
