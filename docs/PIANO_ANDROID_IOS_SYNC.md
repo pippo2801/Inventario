@@ -69,3 +69,12 @@ Entrambi i dispositivi accedono allo stesso archivio dello Studio tramite un'ide
 - La build iOS richiede macOS/Xcode; installazione su iPhone reale e distribuzione richiedono firma Apple appropriata.
 - La build di simulatore non dimostra il funzionamento su iPhone reale.
 - Nessuna credenziale, chiave privata o certificato deve essere salvato nel repository.
+
+## Avanzamento verifiche iPhone (18 novembre 2026)
+
+- Branch di lavoro: `ios/iphone-support`.
+- Il branch iOS include integralmente il branch `audit/complete-project-fixes` alla baseline `701885cb41653d006210533609dbcdf970aef9da`; le 14 commit iOS risultano in avanti e zero indietro rispetto a tale baseline.
+- Il workflow `.github/workflows/build-ios.yml` compila il target simulatore e ora esegue anche una compilazione non firmata per `generic/platform=iOS`, così da controllare la compilazione per il target dispositivo.
+- La compilazione non firmata non produce un'app installabile su iPhone e non sostituisce firma Apple, installazione e collaudo su iPhone 18 Pro.
+- Non sono ancora certificati sul dispositivo reale fotocamera, OCR Apple Vision, selezione/condivisione file, persistenza, notifiche, sospensione/ripresa e layout safe-area/tastiera.
+- Firebase e sincronizzazione tra dispositivi restano disattivati/non verificati: non dichiararli disponibili.
