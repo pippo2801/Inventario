@@ -1,5 +1,9 @@
 name: Build iOS Simulator
 
+concurrency:
+  group: build-ios-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches: [ "ios/iphone-support" ]
