@@ -55,6 +55,22 @@ describe('prepareLegacyMigration', () => {
     expect(result.issues.map((issue) => issue.code)).toContain('DUPLICATE_LEGACY_ID');
   });
 
+  it('detects duplicate SKUs case-insensitively without dropping either product', () => {
+    const snapshot = {
+      ...validSnapshot,
+      eyeglasses: [
+        { id: 'OPT-001', sku: 'RB-3025' },
+        { id: 'OPT-002', sku: 'rb-3025' },
+      ],
+      sales: [],
+    };
+    const result = prepareLegacyMigration('org-test', snapshot);
+
+    expect(result.ready).toBe(false);
+    expect(result.records.eyeglasses).toHaveLength(2);
+    expect(result.issues.map((issue) => issue.code)).toContain('DUPLICATE_SKU');
+  });
+
   it('reports sales whose product is missing', () => {
     const snapshot = {
       ...validSnapshot,
