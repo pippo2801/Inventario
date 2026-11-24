@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { db } from '../services/db';
+import { MigrationPreview } from '../components/MigrationPreview';
 import { decryptBackup, encryptBackup } from '../services/backupCrypto';
 import {
   Settings,
@@ -301,6 +302,7 @@ export const SettingsView: React.FC = () => {
       {/* Tab 2: Sincronizzazione (Section 40) */}
       {activeTab === 'sync' && (
         <div className="space-y-4">
+          <MigrationPreview />
           <div className="p-5 rounded-2xl bg-slate-900/90 border border-teal-900/60 space-y-3 text-xs">
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
