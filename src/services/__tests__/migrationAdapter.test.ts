@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { prepareLegacyMigration, type LegacyMigrationSnapshot } from './migrationAdapter';
+import { prepareLegacyMigration, type LegacyMigrationSnapshot } from '../migrationAdapter';
 
 const validSnapshot: LegacyMigrationSnapshot = {
   eyeglasses: [{ id: 'OPT-001', brand: 'Ray-Ban', status: 'Disponibile' }],
