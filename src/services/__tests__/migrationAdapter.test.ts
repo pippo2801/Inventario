@@ -22,7 +22,11 @@ describe('extractLegacyMigrationSnapshot', () => {
   });
 
   it('rejects a backup missing any required business collection', () => {
-    const { sales: _sales, ...incompleteBackup } = validSnapshot;
+    const incompleteBackup = {
+      eyeglasses: validSnapshot.eyeglasses,
+      clients: validSnapshot.clients,
+      prescriptions: validSnapshot.prescriptions,
+    };
 
     expect(() => extractLegacyMigrationSnapshot(incompleteBackup)).toThrow(
       'Backup incompleto: raccolta sales mancante o non valida.'
