@@ -114,3 +114,18 @@ Entrambi i dispositivi accedono allo stesso archivio dello Studio tramite un'ide
 7. Collaudare su Android e iPhone fisici prima di dichiarare la sincronizzazione disponibile.
 
 Nessuna credenziale è stata aggiunta o modificata e Firebase resta disattivato.
+
+### Ulteriori verifiche sul database locale e sulle vendite
+- Il costruttore di `DatabaseService` carica dati e utente corrente da `localStorage`; in assenza di dati salva i dataset dimostrativi iniziali. Questo è un comportamento demo, non un'identità autenticata.
+- `setCurrentUser(userId)` cambia l'operatore locale selezionando un elemento dell'array utenti e salva la scelta in `localStorage`. Non è un login e non prova l'identità della persona. Il campo ruolo non deve essere usato come autorizzazione di sicurezza.
+- `getSettings()` forza sempre `sync.enabled: false`, anche se il valore salvato è true. La UI e il codice confermano quindi che il toggle non può attivare una sincronizzazione reale.
+- Il metodo `executeFastSale` crea ID e numero vendita sul dispositivo usando timestamp/contatore locale, quindi aggiorna prodotto e vendita in due persistenze locali separate. Due dispositivi offline potrebbero generare numeri/operazioni concorrenti; questa implementazione non può essere riutilizzata come transazione cloud.
+- I log audit e le notifiche sono memorizzati in locale; il fatto che vengano creati quando cambia un prodotto non significa che siano recapitati all'altro telefono.
+- Il componente Header visualizza correttamente lo stato “Locale” e il tooltip dichiara che i dati restano sul dispositivo: mantenere questa trasparenza fino al collaudo end-to-end.
+
+### Decisione architetturale
+- Non attivare un semplice “sync toggle” né copiare direttamente gli array locali su Firestore.
+- Prima versione cloud: account individuali Firebase Auth, appartenenza allo Studio assegnata da backend, cache locale con coda operazioni persistente e ID operazione idempotente.
+- Per le vendite, usare una Cloud Function o una transazione Firestore server-side che verifichi disponibilità e prezzo, crei una sola vendita e aggiorni lo stock atomicamente. L'operatore non deve poter cambiare il ruolo o l'organizzazione tramite payload client.
+- Il provisioning iniziale dell'organizzazione e del primo amministratore deve essere eseguito da procedura amministrativa/backend protetta, non da un client anonimo.
+- Prima della migrazione: esportazione cifrata, verifica integrità, conteggio record per collezione e anteprima delle differenze; nessuna sovrascrittura automatica e nessuna cancellazione dell'archivio locale finché il confronto non è verificato.
