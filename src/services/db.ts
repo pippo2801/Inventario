@@ -435,6 +435,8 @@ class DatabaseService {
       date: now,
       productId: product.id,
       productDescription: `${product.brand} ${product.model} (SKU: ${product.sku})`,
+      eyeglassBrand: product.brand,
+      eyeglassModel: product.model,
       productPurchasePrice: product.purchasePrice,
       listPrice: effectiveListPrice,
       discount: data.discount,
@@ -1097,21 +1099,25 @@ class DatabaseService {
   public getSalesStatistics() {
     const allSales = this.getSales(false);
     const now = new Date();
-    const todayStr = now.toISOString().slice(0, 10);
+    const localDateKey = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    const todayStr = localDateKey(now);
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
 
-    const oneWeekAgo = new Date();
+    const oneWeekAgo = new Date(now);
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
-    const oneMonthAgo = new Date();
+    const oneMonthAgo = new Date(now);
     oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
 
-    const oneYearAgo = new Date();
-    oneYearAgo.setDate(oneYearAgo.getDate() - 365);
-
-    const todaySales = allSales.filter((s) => s.createdAt.startsWith(todayStr));
-    const weekSales = allSales.filter((s) => new Date(s.createdAt) >= oneWeekAgo);
-    const monthSales = allSales.filter((s) => new Date(s.createdAt) >= oneMonthAgo);
-    const yearSales = allSales.filter((s) => new Date(s.createdAt) >= oneYearAgo);
+    const todaySales = allSales.filter((s) => localDateKey(new Date(s.createdAt || s.date)) === todayStr);
+    const weekSales = allSales.filter((s) => new Date(s.createdAt || s.date) >= oneWeekAgo);
+    const monthSales = allSales.filter((s) => new Date(s.createdAt || s.date) >= oneMonthAgo);
+    const yearSales = allSales.filter((s) => new Date(s.createdAt || s.date) >= startOfYear);
 
     const todayRevenue = todaySales.reduce((acc, s) => acc + (s.finalPrice ?? s.salePrice ?? 0), 0);
     const weekRevenue = weekSales.reduce((acc, s) => acc + (s.finalPrice ?? s.salePrice ?? 0), 0);
@@ -1125,15 +1131,15 @@ class DatabaseService {
     const modelCounts: Record<string, number> = {};
 
     allSales.forEach((s) => {
-      const parts = s.productDescription.split(' ');
-      const b = parts[0] || 'Ray-Ban';
-      brandCounts[b] = (brandCounts[b] || 0) + 1;
-      const m = parts.slice(0, 3).join(' ');
-      modelCounts[m] = (modelCounts[m] || 0) + 1;
+      const description = (s.productDescription || '').replace(/\\s*\\(SKU:.*$/i, '').trim();
+      const brand = (s.eyeglassBrand || description.split(' ')[0] || '').trim();
+      const model = (s.eyeglassModel || description.split(' ').slice(1).join(' ')).trim();
+      if (brand) brandCounts[brand] = (brandCounts[brand] || 0) + 1;
+      if (model) modelCounts[model] = (modelCounts[model] || 0) + 1;
     });
 
-    const topBrand = Object.entries(brandCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Ray-Ban';
-    const topModel = Object.entries(modelCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Aviator Classic';
+    const topBrand = Object.entries(brandCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || '—';
+    const topModel = Object.entries(modelCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || '—';
 
     return {
       todayPieces: todaySales.length,
