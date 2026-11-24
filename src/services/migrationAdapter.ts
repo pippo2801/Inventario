@@ -29,6 +29,8 @@ export interface MigrationIssue {
     | 'MISSING_LEGACY_ID'
     | 'DUPLICATE_LEGACY_ID'
     | 'DUPLICATE_SKU'
+    | 'DUPLICATE_FISCAL_CODE'
+    | 'DUPLICATE_SALE_NUMBER'
     | 'ORPHAN_PRODUCT_REFERENCE'
     | 'ORPHAN_CLIENT_REFERENCE';
   collection?: MigrationCollection;
@@ -75,6 +77,8 @@ export function prepareLegacyMigration(
   }
 
   const seenSkus = new Set<string>();
+  const seenFiscalCodes = new Set<string>();
+  const seenSaleNumbers = new Set<string>();
   const ids = {
     eyeglasses: new Set<string>(),
     clients: new Set<string>(),
@@ -121,6 +125,40 @@ export function prepareLegacyMigration(
           message: `ID locale duplicato ${legacyId} nella raccolta ${collection}.`,
         });
         continue;
+      }
+
+      if (collection === 'clients') {
+        const fiscalCode = item.fiscalCode;
+        if (typeof fiscalCode === 'string' && fiscalCode.trim()) {
+          const normalizedFiscalCode = fiscalCode.replace(/\\s+/g, '').toLocaleUpperCase('it-IT');
+          if (seenFiscalCodes.has(normalizedFiscalCode)) {
+            issues.push({
+              code: 'DUPLICATE_FISCAL_CODE',
+              collection,
+              legacyId,
+              message: 'Codice fiscale duplicato tra i clienti; valore omesso per privacy.',
+            });
+          } else {
+            seenFiscalCodes.add(normalizedFiscalCode);
+          }
+        }
+      }
+
+      if (collection === 'sales') {
+        const saleNumber = item.saleNumber;
+        if (typeof saleNumber === 'string' && saleNumber.trim()) {
+          const normalizedSaleNumber = saleNumber.trim().toLocaleUpperCase('it-IT');
+          if (seenSaleNumbers.has(normalizedSaleNumber)) {
+            issues.push({
+              code: 'DUPLICATE_SALE_NUMBER',
+              collection,
+              legacyId,
+              message: 'Numero vendita duplicato nella raccolta vendite.',
+            });
+          } else {
+            seenSaleNumbers.add(normalizedSaleNumber);
+          }
+        }
       }
 
       if (collection === 'eyeglasses') {
