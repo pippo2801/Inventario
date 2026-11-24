@@ -15,6 +15,32 @@ export interface LegacyMigrationSnapshot {
 
 export type MigrationCollection = keyof LegacyMigrationSnapshot;
 
+/**
+ * Validates and extracts only the four business collections from a parsed backup.
+ * Backup metadata and unrelated fields are intentionally ignored.
+ */
+export function extractLegacyMigrationSnapshot(value: unknown): LegacyMigrationSnapshot {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('Formato backup non valido.');
+  }
+
+  const source = value as Record<string, unknown>;
+  const collections: MigrationCollection[] = ['eyeglasses', 'clients', 'prescriptions', 'sales'];
+
+  for (const collection of collections) {
+    if (!Array.isArray(source[collection])) {
+      throw new Error(`Backup incompleto: raccolta ${collection} mancante o non valida.`);
+    }
+  }
+
+  return {
+    eyeglasses: source.eyeglasses as LegacyRecord[],
+    clients: source.clients as LegacyRecord[],
+    prescriptions: source.prescriptions as LegacyRecord[],
+    sales: source.sales as LegacyRecord[],
+  };
+}
+
 export interface PreparedMigrationRecord extends LegacyRecord {
   organizationId: string;
   legacyId: string;
