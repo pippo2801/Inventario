@@ -124,6 +124,41 @@ describe('prepareLegacyMigration', () => {
     expect(result.issues.map((issue) => issue.code)).toContain('ORPHAN_CLIENT_REFERENCE');
   });
 
+  it('reports sales whose optional client reference is missing', () => {
+    const snapshot = {
+      ...validSnapshot,
+      sales: [{ id: 'SALE-ORPHAN-CLIENT', productId: 'OPT-001', clientId: 'CLI-MISSING' }],
+    };
+    const result = prepareLegacyMigration('org-test', snapshot);
+
+    expect(result.ready).toBe(false);
+    expect(result.issues.map((issue) => issue.code)).toContain('ORPHAN_SALE_CLIENT_REFERENCE');
+  });
+
+  it('allows sales without an associated client', () => {
+    const snapshot = {
+      ...validSnapshot,
+      sales: [{ id: 'SALE-WALK-IN', productId: 'OPT-001' }],
+    };
+    const result = prepareLegacyMigration('org-test', snapshot);
+
+    expect(result.ready).toBe(true);
+  });
+
+  it('preserves soft-deleted products and historical sales referencing them', () => {
+    const deletedAt = '2026-10-02T12:00:00.000Z';
+    const snapshot = {
+      ...validSnapshot,
+      eyeglasses: [{ id: 'OPT-OLD', sku: 'OLD-001', deletedAt }],
+      sales: [{ id: 'SALE-HISTORY', productId: 'OPT-OLD', deletedAt: null }],
+    };
+    const result = prepareLegacyMigration('org-test', snapshot);
+
+    expect(result.ready).toBe(true);
+    expect(result.records.eyeglasses[0]).toMatchObject({ id: 'OPT-OLD', deletedAt });
+    expect(result.records.sales[0].productId).toBe('OPT-OLD');
+  });
+
   it('allows prescriptions without a linked client', () => {
     const snapshot = {
       ...validSnapshot,
