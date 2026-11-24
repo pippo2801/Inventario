@@ -1131,7 +1131,7 @@ class DatabaseService {
     const modelCounts: Record<string, number> = {};
 
     allSales.forEach((s) => {
-      const description = (s.productDescription || '').replace(/\\s*\\(SKU:.*$/i, '').trim();
+      const description = (s.productDescription || '').replace(/\s*\(SKU:.*$/i, '').trim();
       const brand = (s.eyeglassBrand || description.split(' ')[0] || '').trim();
       const model = (s.eyeglassModel || description.split(' ').slice(1).join(' ')).trim();
       if (brand) brandCounts[brand] = (brandCounts[brand] || 0) + 1;
