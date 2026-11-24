@@ -201,6 +201,7 @@ export function App() {
 
       {/* 2. Detailed Eyeglass Inspector & Editor (Sections 18 & 19) */}
       <EyeglassDetailModal
+        isOpen={!!selectedEyeglass}
         eyeglass={selectedEyeglass}
         onClose={() => setSelectedEyeglass(null)}
         onOpenFastSale={(item) => setSaleTargetEyeglass(item)}
