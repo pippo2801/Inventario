@@ -28,6 +28,7 @@ export interface MigrationIssue {
     | 'INVALID_RECORD'
     | 'MISSING_LEGACY_ID'
     | 'DUPLICATE_LEGACY_ID'
+    | 'DUPLICATE_SKU'
     | 'ORPHAN_PRODUCT_REFERENCE'
     | 'ORPHAN_CLIENT_REFERENCE';
   collection?: MigrationCollection;
@@ -73,6 +74,7 @@ export function prepareLegacyMigration(
     });
   }
 
+  const seenSkus = new Set<string>();
   const ids = {
     eyeglasses: new Set<string>(),
     clients: new Set<string>(),
@@ -119,6 +121,23 @@ export function prepareLegacyMigration(
           message: `ID locale duplicato ${legacyId} nella raccolta ${collection}.`,
         });
         continue;
+      }
+
+      if (collection === 'eyeglasses') {
+        const sku = item.sku;
+        if (typeof sku === 'string' && sku.trim()) {
+          const normalizedSku = sku.trim().toLocaleUpperCase('it-IT');
+          if (seenSkus.has(normalizedSku)) {
+            issues.push({
+              code: 'DUPLICATE_SKU',
+              collection,
+              legacyId,
+              message: 'SKU duplicato nella raccolta occhiali.',
+            });
+          } else {
+            seenSkus.add(normalizedSku);
+          }
+        }
       }
 
       ids[collection].add(legacyId);
