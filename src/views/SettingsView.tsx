@@ -310,7 +310,7 @@ export const SettingsView: React.FC = () => {
               I dati vengono conservati nello spazio locale dell'app su questo smartphone. La sincronizzazione cloud e quella con altri telefoni sono disattivate. I profili utente locali non sono un sistema di autenticazione o una protezione con password.
             </p>
             <p className="text-slate-400">
-              Il backup JSON contiene dati personali e sanitari in chiaro: non è cifrato. Proteggi il telefono con blocco schermo e conserva il file in una posizione privata.
+              I dati locali possono includere informazioni personali e sanitarie. I nuovi backup esportati dalla scheda Backup sono cifrati; eventuali vecchi file JSON non cifrati devono essere conservati in una posizione privata. Proteggi anche il telefono con il blocco schermo.
             </p>
           </div>
         </div>
