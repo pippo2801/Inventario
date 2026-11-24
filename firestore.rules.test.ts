@@ -210,6 +210,37 @@ describe('Firestore Security Rules', () => {
       await assertFails(db.collection('users').doc('admin-uid').get());
     });
 
+    it('DENIES admin reading a user from another organization', async () => {
+      const db = asCompat(testEnv.authenticatedContext('admin-uid').firestore());
+      await assertFails(db.collection('users').doc('other-org-admin-uid').get());
+    });
+
+    it('DENIES admin updating a user from another organization', async () => {
+      const db = asCompat(testEnv.authenticatedContext('admin-uid').firestore());
+      await assertFails(db.collection('users').doc('other-org-admin-uid').update({
+        name: 'Cross-org change',
+      }));
+    });
+
+    it('DENIES a user changing their own organizationId', async () => {
+      const db = asCompat(testEnv.authenticatedContext('operator-uid').firestore());
+      await assertFails(db.collection('users').doc('operator-uid').update({
+        organizationId: 'org-other',
+      }));
+    });
+
+    it('DENIES an admin changing their own organizationId', async () => {
+      const db = asCompat(testEnv.authenticatedContext('admin-uid').firestore());
+      await assertFails(db.collection('users').doc('admin-uid').update({
+        organizationId: 'org-other',
+      }));
+    });
+
+    it('DENIES admin deleting a user from another organization', async () => {
+      const db = asCompat(testEnv.authenticatedContext('admin-uid').firestore());
+      await assertFails(db.collection('users').doc('other-org-admin-uid').delete());
+    });
+
     it('DENIES self-promotion to Amministratore', async () => {
       const db = asCompat(testEnv.authenticatedContext('operator-uid').firestore());
       // Operator tries to change their own role to Amministratore
