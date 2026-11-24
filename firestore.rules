@@ -2,145 +2,151 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper functions
     function isSignedIn() {
       return request.auth != null;
     }
-    
+
+    function requesterExists() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function requesterData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function requesterOrgId() {
+      return requesterData().organizationId;
+    }
+
+    function isAdmin() {
+      return requesterExists() && requesterData().role == 'Amministratore';
+    }
+
+    function isOperatorOrAdmin() {
+      return requesterExists() &&
+        requesterData().role in ['Amministratore', 'Operatore'];
+    }
+
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
-    
-    function getUserData(userId) {
-      return get(/databases/$(database)/documents/users/$(userId)).data;
-    }
-    
-    function getRequesterData() {
-      return getUserData(request.auth.uid);
-    }
-    
-    function isAdmin() {
-      return isSignedIn() && getRequesterData().role == 'Amministratore';
-    }
-    
-    function isOperator() {
-      return isSignedIn() && getRequesterData().role == 'Operatore';
-    }
-    
-    function isOperatorOrAdmin() {
-      return isSignedIn() && 
-        (getRequesterData().role == 'Amministratore' || getRequesterData().role == 'Operatore');
-    }
-    
-    function getRequesterOrgId() {
-      return getRequesterData().organizationId;
-    }
-    
-    function userBelongsToOrg(userId, orgId) {
-      return getUserData(userId).organizationId == orgId;
-    }
-    
-    function requesterBelongsToOrg(orgId) {
-      return getRequesterOrgId() == orgId;
-    }
-    
-    function isSelfPromotionAttempt(userId, newRole) {
-      return isSignedIn() && request.auth.uid == userId && 
-        newRole != resource.data.role &&
-        newRole == 'Amministratore';
+
+    function validRole(role) {
+      return role in ['Amministratore', 'Operatore', 'Cliente'];
     }
 
-    // Users collection - users can read their own data, admins can read all
-    // Users CANNOT modify their own role; only admins can change roles
+    function sameOrgResource() {
+      return requesterExists() &&
+        resource.data.organizationId == requesterOrgId();
+    }
+
+    function sameOrgRequest() {
+      return requesterExists() &&
+        request.resource.data.organizationId == requesterOrgId();
+    }
+
+    // User documents: self-service cannot change role or organization.
+    // Admin permissions are strictly limited to their own organization.
     match /users/{userId} {
-      allow read: if isOwner(userId) || isAdmin();
-      allow create: if isAdmin(); // Only admins can create users
-      allow update: if (isAdmin() && !isOwner(userId)) ||
-        ((isOwner(userId) || isAdmin()) &&
-         (!request.resource.data.keys().hasAny(['role']) ||
-          request.resource.data.role == resource.data.role));
-      allow delete: if isAdmin();
+      allow read: if isOwner(userId) ||
+        (isAdmin() && resource.data.organizationId == requesterOrgId());
+
+      allow create: if isAdmin() &&
+        sameOrgRequest() &&
+        validRole(request.resource.data.role);
+
+      allow update: if (
+          isOwner(userId) &&
+          request.resource.data.role == resource.data.role &&
+          request.resource.data.organizationId == resource.data.organizationId
+        ) || (
+          isAdmin() &&
+          !isOwner(userId) &&
+          resource.data.organizationId == requesterOrgId() &&
+          request.resource.data.organizationId == resource.data.organizationId &&
+          validRole(request.resource.data.role)
+        );
+
+      allow delete: if isAdmin() &&
+        !isOwner(userId) &&
+        resource.data.organizationId == requesterOrgId();
     }
 
-    // Organizations - only admins of that org can read/write
     match /organizations/{orgId} {
-      allow read: if isAdmin() && requesterBelongsToOrg(orgId);
-      allow write: if isAdmin() && requesterBelongsToOrg(orgId);
+      allow read: if isAdmin() && orgId == requesterOrgId();
+      allow create: if isAdmin() && orgId == requesterOrgId() &&
+        request.resource.data.organizationId == orgId;
+      allow update: if isAdmin() && orgId == requesterOrgId() &&
+        resource.data.organizationId == orgId &&
+        request.resource.data.organizationId == orgId;
+      allow delete: if isAdmin() && orgId == requesterOrgId() &&
+        resource.data.organizationId == orgId;
     }
 
-    // Eyeglasses - operators and admins can read/write within their org
-    match /eyeglasses/{eyeglassId} {
-      allow read: if isOperatorOrAdmin() && requesterBelongsToOrg(resource.data.organizationId);
-      allow create: if isOperatorOrAdmin() && request.resource.data.organizationId == getRequesterOrgId();
-      allow update: if isOperatorOrAdmin() && 
-        resource.data.organizationId == getRequesterOrgId() &&
-        request.resource.data.organizationId == getRequesterOrgId();
-      allow delete: if isAdmin() && resource.data.organizationId == getRequesterOrgId();
+    match /eyeglasses/{documentId} {
+      allow read: if isOperatorOrAdmin() && sameOrgResource();
+      allow create: if isOperatorOrAdmin() && sameOrgRequest();
+      allow update: if isOperatorOrAdmin() && sameOrgResource() &&
+        request.resource.data.organizationId == resource.data.organizationId;
+      allow delete: if isAdmin() && sameOrgResource();
     }
 
-    // Clients - operators and admins can read/write within their org
-    match /clients/{clientId} {
-      allow read: if isOperatorOrAdmin() && requesterBelongsToOrg(resource.data.organizationId);
-      allow create: if isOperatorOrAdmin() && request.resource.data.organizationId == getRequesterOrgId();
-      allow update: if isOperatorOrAdmin() && 
-        resource.data.organizationId == getRequesterOrgId() &&
-        request.resource.data.organizationId == getRequesterOrgId();
-      allow delete: if isAdmin() && resource.data.organizationId == getRequesterOrgId();
+    match /clients/{documentId} {
+      allow read: if isOperatorOrAdmin() && sameOrgResource();
+      allow create: if isOperatorOrAdmin() && sameOrgRequest();
+      allow update: if isOperatorOrAdmin() && sameOrgResource() &&
+        request.resource.data.organizationId == resource.data.organizationId;
+      allow delete: if isAdmin() && sameOrgResource();
     }
 
-    // Prescriptions - operators and admins can read/write within their org
-    match /prescriptions/{prescriptionId} {
-      allow read: if isOperatorOrAdmin() && requesterBelongsToOrg(resource.data.organizationId);
-      allow create: if isOperatorOrAdmin() && request.resource.data.organizationId == getRequesterOrgId();
-      allow update: if isOperatorOrAdmin() && 
-        resource.data.organizationId == getRequesterOrgId() &&
-        request.resource.data.organizationId == getRequesterOrgId();
-      allow delete: if isAdmin() && resource.data.organizationId == getRequesterOrgId();
+    match /prescriptions/{documentId} {
+      allow read: if isOperatorOrAdmin() && sameOrgResource();
+      allow create: if isOperatorOrAdmin() && sameOrgRequest();
+      allow update: if isOperatorOrAdmin() && sameOrgResource() &&
+        request.resource.data.organizationId == resource.data.organizationId;
+      allow delete: if isAdmin() && sameOrgResource();
     }
 
-    // Sales - operators can create, admins can read/update/delete within their org
-    match /sales/{saleId} {
-      allow read: if isOperatorOrAdmin() && requesterBelongsToOrg(resource.data.organizationId);
-      allow create: if isOperatorOrAdmin() && request.resource.data.organizationId == getRequesterOrgId();
-      allow update: if isAdmin() && resource.data.organizationId == getRequesterOrgId();
-      allow delete: if isAdmin() && resource.data.organizationId == getRequesterOrgId();
+    match /sales/{documentId} {
+      allow read: if isOperatorOrAdmin() && sameOrgResource();
+      allow create: if isOperatorOrAdmin() && sameOrgRequest();
+      allow update: if isAdmin() && sameOrgResource() &&
+        request.resource.data.organizationId == resource.data.organizationId;
+      allow delete: if isAdmin() && sameOrgResource();
     }
 
-    // Audit logs - read for operators/admins within org, create only by system (via Cloud Functions)
-    // Operators/admins CANNOT create audit logs directly
-    match /auditLogs/{logId} {
-      allow read: if isOperatorOrAdmin() && requesterBelongsToOrg(resource.data.organizationId);
-      allow create: if false; // Only Cloud Functions / trusted backend can create
-      allow update, delete: if false; // Immutable
+    match /auditLogs/{documentId} {
+      allow read: if isOperatorOrAdmin() && sameOrgResource();
+      // Only a trusted backend (for example, a Cloud Function) may write audit logs.
+      allow create, update, delete: if false;
     }
 
-    // Custom categories - operators and admins within their org
-    match /customCategories/{categoryId} {
-      allow read: if isOperatorOrAdmin() && requesterBelongsToOrg(resource.data.organizationId);
-      allow create: if isOperatorOrAdmin() && request.resource.data.organizationId == getRequesterOrgId();
-      allow update: if isOperatorOrAdmin() && 
-        resource.data.organizationId == getRequesterOrgId() &&
-        request.resource.data.organizationId == getRequesterOrgId();
-      allow delete: if isOperatorOrAdmin() && resource.data.organizationId == getRequesterOrgId();
+    match /customCategories/{documentId} {
+      allow read: if isOperatorOrAdmin() && sameOrgResource();
+      allow create: if isOperatorOrAdmin() && sameOrgRequest();
+      allow update: if isOperatorOrAdmin() && sameOrgResource() &&
+        request.resource.data.organizationId == resource.data.organizationId;
+      allow delete: if isOperatorOrAdmin() && sameOrgResource();
     }
 
-    // Settings - only admins within their org
-    match /settings/{settingId} {
-      allow read: if isOperatorOrAdmin() && requesterBelongsToOrg(resource.data.organizationId);
-      allow create: if isAdmin() && request.resource.data.organizationId == getRequesterOrgId();
-      allow update: if isAdmin() &&
-        resource.data.organizationId == getRequesterOrgId() &&
-        request.resource.data.organizationId == getRequesterOrgId();
-      allow delete: if isAdmin() && resource.data.organizationId == getRequesterOrgId();
+    match /settings/{documentId} {
+      allow read: if isOperatorOrAdmin() && sameOrgResource();
+      allow create: if isAdmin() && sameOrgRequest();
+      allow update: if isAdmin() && sameOrgResource() &&
+        request.resource.data.organizationId == resource.data.organizationId;
+      allow delete: if isAdmin() && sameOrgResource();
     }
 
-    // Sync status - operators and admins within their org
-    match /syncStatus/{statusId} {
-      allow read: if isOperatorOrAdmin() && requesterBelongsToOrg(resource.data.organizationId);
-      allow write: if isOperatorOrAdmin() && request.resource.data.organizationId == getRequesterOrgId();
+    match /syncStatus/{documentId} {
+      allow read: if isOperatorOrAdmin() && sameOrgResource();
+      allow create: if isOperatorOrAdmin() && sameOrgRequest();
+      allow update: if isOperatorOrAdmin() && sameOrgResource() &&
+        request.resource.data.organizationId == resource.data.organizationId;
+      allow delete: if false;
     }
 
-    // Default deny for any other collections
+    // Deny every collection not explicitly covered above.
     match /{document=**} {
       allow read, write: if false;
     }
