@@ -30,7 +30,7 @@ export const MigrationPreview: React.FC = () => {
       const result = prepareLegacyMigration('', snapshot);
       setPreview({
         counts: result.counts,
-        issueCodes: [...new Set(result.issues.map((issue) => issue.code))],
+        issueCodes: [...new Set(result.issues.filter((issue) => issue.code !== 'INVALID_ORGANIZATION_ID').map((issue) => issue.code))],
         blockedByOrganization: true,
       });
     } catch {
@@ -76,13 +76,13 @@ export const MigrationPreview: React.FC = () => {
           {preview.issueCodes.length === 0 ? (
             <div className="flex items-start gap-2 text-xs text-emerald-300">
               <CheckCircle2 className="h-4 w-4 shrink-0" />
-              Nessuna anomalia strutturale rilevata nei collegamenti controllati.
+              Nessuna anomalia strutturale rilevata nei controlli locali eseguiti.
             </div>
           ) : (
             <div className="flex items-start gap-2 text-xs text-amber-200">
               <AlertCircle className="h-4 w-4 shrink-0" />
               <div>
-                <p className="font-semibold">Controlli da risolvere: {preview.issueCodes.length}</p>
+                <p className="font-semibold">Anomalie da verificare: {preview.issueCodes.length}</p>
                 <p className="mt-1 text-amber-100/80">{preview.issueCodes.join(', ')}</p>
               </div>
             </div>
