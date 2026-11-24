@@ -129,3 +129,53 @@ Nessuna credenziale è stata aggiunta o modificata e Firebase resta disattivato.
 - Per le vendite, usare una Cloud Function o una transazione Firestore server-side che verifichi disponibilità e prezzo, crei una sola vendita e aggiorni lo stock atomicamente. L'operatore non deve poter cambiare il ruolo o l'organizzazione tramite payload client.
 - Il provisioning iniziale dell'organizzazione e del primo amministratore deve essere eseguito da procedura amministrativa/backend protetta, non da un client anonimo.
 - Prima della migrazione: esportazione cifrata, verifica integrità, conteggio record per collezione e anteprima delle differenze; nessuna sovrascrittura automatica e nessuna cancellazione dell'archivio locale finché il confronto non è verificato.
+
+## Proposta schema cloud v1 (24 novembre 2026)
+
+Questa sezione è una specifica preparatoria: non abilita Firebase e non modifica i dati. Le collezioni attuali restano flat per compatibilità con le Security Rules già presenti; ogni documento aziendale deve avere `organizationId` obbligatorio. Gli ID locali come `OPT-001` non sono ID cloud globali: salvare `legacyId` e assegnare al documento cloud un ID univoco generato, mantenendo un indice di migrazione per organizzazione.
+
+### Identità e appartenenza
+- Firebase Authentication identifica la persona tramite UID; il documento `users/{uid}` è il profilo applicativo autorevole.
+- Campi profilo minimi: `uid`, `organizationId`, `role`, `displayName`, `email`, `active`, `createdAt`, `updatedAt`, `schemaVersion`.
+- Il client può aggiornare solo campi profilo non privilegiati; `organizationId`, `role` e `active` sono assegnati dal backend.
+- Non collegare automaticamente un account a uno studio basandosi solo sull'email, né importare ruoli dal vecchio array locale.
+- Il primo studio e il primo amministratore si creano con una procedura di provisioning autenticata e amministrativa, usando Admin SDK fuori dal client. Gli inviti successivi hanno token monouso, scadenza e ruolo assegnato dal backend.
+
+### Record aziendali
+| Collezione | Identificativo e campi aggiuntivi richiesti |
+| --- | --- |
+| organizations | ID cloud dello studio; dati anagrafici; `schemaVersion`, `createdAt`, `updatedAt` |
+| eyeglasses | `organizationId`, `legacyId`, `createdByUid`, `updatedByUid`, `version`, `createdAt`, `updatedAt`, `deletedAt` |
+| clients | stessi campi tenant/audit; codice fiscale trattato come dato personale ad accesso ristretto |
+| prescriptions | stessi campi tenant/audit; immagini in Storage privato, mai URL pubblici permanenti |
+| sales | `organizationId`, `legacyId`, `operationId`, `operatorUid`, `createdAt`, `deletedAt`; documento immutabile salvo flusso amministrativo di storno |
+| auditLogs | `organizationId`, `actorUid`, timestamp server, azione e riferimento record; sola scrittura backend |
+| customCategories/settings/syncStatus | `organizationId`, `updatedAt`, `updatedByUid`; validazione e permessi per ruolo |
+
+Tutti i timestamp canonici cloud devono essere Firestore Timestamp/server timestamp; l'app può convertirli in ISO string nel livello repository per non riscrivere subito tutte le viste. Il campo `version` serve per rilevare modifiche concorrenti, non per risolverle sovrascrivendo automaticamente.
+
+### Migrazione locale -> cloud
+1. Verificare autenticazione e appartenenza allo studio.
+2. Creare snapshot cifrato e manifest con conteggi per collezione.
+3. Mappare ogni ID locale con coppia `organizationId + legacyId`; segnalare duplicati SKU, riferimenti orfani e record incompleti.
+4. Mostrare anteprima importazione e conflitti; non scegliere automaticamente quale dato prevale.
+5. Importare in batch idempotenti con stato di avanzamento persistente e log tecnico senza dati personali.
+6. Rileggere i dati cloud, confrontare conteggi e hash normalizzati; solo dopo dichiarare migrazione verificata.
+7. Conservare intatto il database locale e il backup finché l'utente non conferma la verifica.
+
+### Vendita atomica
+La vendita deve passare da un endpoint backend autenticato. Il backend verifica membership/ruolo, disponibilità del prodotto, prezzo e sconto; usa `operationId` generato dal client e univoco per organizzazione per rendere i retry idempotenti; crea vendita, marca il prodotto venduto e registra audit nello stesso flusso transazionale. Se il prodotto è già venduto o l'operazione è stata già elaborata, restituisce esito deterministico senza creare una seconda vendita. Le vendite non si cancellano fisicamente: annullamento e reso sono eventi/storni espliciti.
+
+### Query e regole
+- Ogni query alle collezioni tenant deve includere filtro `organizationId == membership.organizationId`; le Rules non filtrano i risultati, li autorizzano o negano.
+- I test esistenti preparano utenti e record con Rules disabilitate: verificano le regole di accesso, ma non il bootstrap amministrativo né il flusso reale di provisioning.
+- Prima di riattivare Firebase aggiungere test per query multi-tenant, campi obbligatori, cambio ruolo/org, utenti disattivati, inviti scaduti, ID duplicati, retry vendita e transazioni concorrenti.
+- La specifica non autorizza ancora l'aggiunta di `organizationId` ai tipi TypeScript: prima occorre implementare adapter e migrazione compatibili con i backup legacy, quindi testare i vecchi dati.
+
+### Ordine implementativo autorizzato
+1. Definire adapter/mapping e test puri senza rete.
+2. Implementare provisioning backend e test emulator, senza segreti nel repository.
+3. Integrare Firebase Auth mantenendo una modalità demo esplicita e non confondibile con login reale.
+4. Integrare lettura cloud in ambiente di test, poi migrazione preview/import.
+5. Integrare scritture e vendita atomica solo dopo test di concorrenza e regole.
+6. Test Android e iOS su dispositivi reali prima di dichiarare supporto completo.
