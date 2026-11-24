@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { prepareLegacyMigration, type LegacyMigrationSnapshot } from '../migrationAdapter';
+import { extractLegacyMigrationSnapshot, prepareLegacyMigration, type LegacyMigrationSnapshot } from '../migrationAdapter';
 
 const validSnapshot: LegacyMigrationSnapshot = {
   eyeglasses: [{ id: 'OPT-001', brand: 'Ray-Ban', status: 'Disponibile' }],
@@ -7,6 +7,34 @@ const validSnapshot: LegacyMigrationSnapshot = {
   prescriptions: [{ id: 'PRE-001', clientId: 'CLI-001' }],
   sales: [{ id: 'SALE-001', productId: 'OPT-001', finalPrice: 120 }],
 };
+
+describe('extractLegacyMigrationSnapshot', () => {
+  it('extracts all four collections from the actual flat backup shape', () => {
+    const backup = {
+      app: 'Studio Ottico Di Pietro',
+      schemaVersion: 2,
+      exportedAt: '2026-11-24T10:00:00.000Z',
+      ...validSnapshot,
+      auditLogs: [{ id: 'AUD-1' }],
+    };
+
+    expect(extractLegacyMigrationSnapshot(backup)).toEqual(validSnapshot);
+  });
+
+  it('rejects a backup missing any required business collection', () => {
+    const { sales: _sales, ...incompleteBackup } = validSnapshot;
+
+    expect(() => extractLegacyMigrationSnapshot(incompleteBackup)).toThrow(
+      'Backup incompleto: raccolta sales mancante o non valida.'
+    );
+  });
+
+  it('rejects a non-object backup instead of treating it as empty data', () => {
+    expect(() => extractLegacyMigrationSnapshot(null)).toThrow('Formato backup non valido.');
+    expect(() => extractLegacyMigrationSnapshot([])).toThrow('Formato backup non valido.');
+  });
+
+});
 
 describe('prepareLegacyMigration', () => {
   it('prepares tenant-scoped copies and preserves legacy IDs', () => {
