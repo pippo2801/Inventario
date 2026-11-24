@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { db } from '../services/db';
+import { decryptBackup, encryptBackup } from '../services/backupCrypto';
 import {
   Settings,
   Users,
@@ -39,17 +40,30 @@ export const SettingsView: React.FC = () => {
   const [editingDescription, setEditingDescription] = useState('');
   const [backupSuccessMessage, setBackupSuccessMessage] = useState('');
 
-  const handleExportBackup = () => {
-    const backupJson = db.exportBackupData();
-    const blob = new Blob([backupJson], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `studio_ottico_dipietro_backup_${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    setBackupSuccessMessage('Backup esportato con successo.');
-    setTimeout(() => setBackupSuccessMessage(''), 4000);
+  const handleExportBackup = async () => {
+    const passphrase = window.prompt('Crea una password per cifrare il backup (almeno 10 caratteri). Conservala: senza di essa non potrai ripristinare il file.');
+    if (passphrase === null) return;
+    const confirmation = window.prompt('Conferma la password del backup.');
+    if (confirmation === null) return;
+    if (passphrase !== confirmation) {
+      alert('Le password non coincidono. Backup non creato.');
+      return;
+    }
+
+    try {
+      const encryptedBackup = await encryptBackup(db.exportBackupData(), passphrase);
+      const blob = new Blob([encryptedBackup], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `studio_ottico_dipietro_backup_cifrato_${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setBackupSuccessMessage('Backup cifrato esportato. Conserva la password in un luogo sicuro.');
+      setTimeout(() => setBackupSuccessMessage(''), 6000);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Impossibile creare il backup cifrato.');
+    }
   };
 
   const customCategories = db.getCustomCategories();
@@ -120,25 +134,34 @@ export const SettingsView: React.FC = () => {
     }
   };
 
-    const handleImportBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportBackup = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const json = event.target?.result as string;
-        const success = db.importBackupData(json);
-        if (success) {
-          alert('Dati ripristinati con successo dal file di backup.');
-        } else {
-          alert('Errore nel formato del file di backup.');
-        }
-      } catch (err) {
-        alert('File di backup non valido.');
+    try {
+      const fileText = await file.text();
+      const payload = JSON.parse(fileText);
+      let backupJson = fileText;
+
+      if (payload?.format === 'studio-ottico-dipietro-encrypted-backup') {
+        const passphrase = window.prompt('Inserisci la password usata per cifrare questo backup.');
+        if (passphrase === null) return;
+        backupJson = await decryptBackup(fileText, passphrase);
+      } else if (!window.confirm('Questo è un vecchio backup non cifrato e può contenere dati personali e sanitari in chiaro. Vuoi continuare con il ripristino?')) {
+        return;
       }
-    };
-    reader.readAsText(file);
+
+      const success = db.importBackupData(backupJson);
+      if (success) {
+        alert('Dati ripristinati con successo dal file di backup.');
+      } else {
+        alert('Errore nel formato del file di backup.');
+      }
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'File di backup non valido o password errata.');
+    } finally {
+      e.target.value = '';
+    }
   };
 
   return (
@@ -299,7 +322,7 @@ export const SettingsView: React.FC = () => {
           <div className="p-4 rounded-xl bg-teal-950/40 border border-teal-800/60 text-slate-300">
             <h3 className="font-bold text-white mb-1">Backup locale e copie manuali</h3>
             <p>
-              I dati restano su questo smartphone. Le copie JSON devono essere esportate manualmente: non viene eseguito alcun backup automatico o caricamento cloud. Il file esportato non è cifrato e contiene dati personali e sanitari.
+              I dati restano su questo smartphone. Le copie devono essere esportate manualmente: non viene ancora eseguito alcun backup automatico o caricamento cloud. I nuovi file vengono cifrati con AES-256-GCM e una password scelta da te. I vecchi backup JSON restano importabili, ma non sono cifrati.
             </p>
           </div>
 
@@ -311,7 +334,7 @@ export const SettingsView: React.FC = () => {
                   <span>Crea Backup Completo Adesso</span>
                 </h4>
                 <p className="text-slate-400 mt-1">
-                  Genera un file JSON con inventario, clienti, prescrizioni, vendite, utenti e impostazioni. Contiene dati personali e sanitari: conservalo in una posizione protetta e non condividerlo.
+                  Genera un backup cifrato con inventario, clienti, prescrizioni, vendite, utenti e impostazioni. La password non viene salvata nell'app: se la perdi, il backup non sarà recuperabile.
                 </p>
               </div>
 
@@ -326,7 +349,7 @@ export const SettingsView: React.FC = () => {
                 className="w-full py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow flex items-center justify-center gap-2 transition-all active:scale-95"
               >
                 <Download className="w-4 h-4" />
-                <span>Scarica Backup (.json)</span>
+                <span>Scarica Backup cifrato</span>
               </button>
             </div>
 
@@ -337,7 +360,7 @@ export const SettingsView: React.FC = () => {
                   <span>Ripristino da File di Backup</span>
                 </h4>
                 <p className="text-slate-400 mt-1">
-                  Ripristina i dati dell'applicazione a partire da un file JSON precedentemente salvato.
+                  Ripristina un backup cifrato con la password corretta oppure importa un vecchio JSON dopo una conferma di sicurezza.
                 </p>
               </div>
 
