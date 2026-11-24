@@ -322,7 +322,7 @@ export const SettingsView: React.FC = () => {
           <div className="p-4 rounded-xl bg-teal-950/40 border border-teal-800/60 text-slate-300">
             <h3 className="font-bold text-white mb-1">Backup locale e copie manuali</h3>
             <p>
-              I dati restano su questo smartphone. Le copie devono essere esportate manualmente: non viene ancora eseguito alcun backup automatico o caricamento cloud. I nuovi file vengono cifrati con AES-256-GCM e una password scelta da te. I vecchi backup JSON restano importabili, ma non sono cifrati.
+              I dati restano su questo smartphone. Le copie devono essere esportate manualmente: non viene ancora eseguito alcun backup automatico o caricamento cloud. I nuovi backup creati da questa schermata vengono cifrati con AES-256-GCM e una password scelta da te. I vecchi backup JSON non cifrati restano importabili solo dopo una conferma di sicurezza.
             </p>
           </div>
 
