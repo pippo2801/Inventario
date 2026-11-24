@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { AlertCircle, CheckCircle2, ClipboardList, RefreshCw } from 'lucide-react';
 import { db } from '../services/db';
-import { prepareLegacyMigration, type LegacyMigrationSnapshot } from '../services/migrationAdapter';
+import { extractLegacyMigrationSnapshot, prepareLegacyMigration, type LegacyMigrationSnapshot } from '../services/migrationAdapter';
 
 type PreviewState = {
   counts: Record<keyof LegacyMigrationSnapshot, number>;
@@ -17,13 +17,8 @@ export const MigrationPreview: React.FC = () => {
     setError('');
     try {
       // exportBackupData is read-only: no import, persistence or network call occurs here.
-      const exported = JSON.parse(db.exportBackupData()) as Partial<LegacyMigrationSnapshot>;
-      const snapshot = {
-        eyeglasses: exported.eyeglasses,
-        clients: exported.clients,
-        prescriptions: exported.prescriptions,
-        sales: exported.sales,
-      } as LegacyMigrationSnapshot;
+      const exported: unknown = JSON.parse(db.exportBackupData());
+      const snapshot: LegacyMigrationSnapshot = extractLegacyMigrationSnapshot(exported);
 
       // A real organization ID must be assigned by the authenticated backend.
       // Empty ID intentionally keeps this a local integrity preview, never an import-ready plan.
