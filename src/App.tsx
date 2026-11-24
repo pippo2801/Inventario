@@ -70,17 +70,20 @@ export function App() {
     // "venduti" è il nome usato dalle notifiche, mentre la schermata
     // dello storico vendite è "sales".
     if (view === 'venduti') {
-      const sale = id ? db.getSales(false).find((item) => item.id === id) : undefined;
+      // Le notifiche restano consultabili anche se la vendita è stata annullata.
+      // Cerca quindi anche nello storico completo, non solo nelle vendite attive.
+      const sale = id ? db.getSales(true).find((item) => item.id === id) : undefined;
+      const product = sale ? db.getEyeglassById(sale.productId) : undefined;
 
-      if (sale) {
-        const product = db.getEyeglassById(sale.productId);
-
-        if (product) {
-          setSelectedEyeglass(product);
-        }
+      if (product) {
+        setSelectedEyeglass(product);
+        setCurrentView('inventory');
+      } else {
+        // Fallback sicuro: non lasciare l'utente su una schermata vuota
+        // se la vendita o il prodotto non esistono più sul dispositivo.
+        setSelectedEyeglass(null);
+        setCurrentView('sales');
       }
-
-      setCurrentView('sales');
       return;
     }
 
