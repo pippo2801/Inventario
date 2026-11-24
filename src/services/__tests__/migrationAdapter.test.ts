@@ -71,6 +71,37 @@ describe('prepareLegacyMigration', () => {
     expect(result.issues.map((issue) => issue.code)).toContain('DUPLICATE_SKU');
   });
 
+  it('detects duplicate fiscal codes without exposing the value in diagnostics', () => {
+    const snapshot = {
+      ...validSnapshot,
+      clients: [
+        { id: 'CLI-001', fiscalCode: 'RSSMRA80A01H501U' },
+        { id: 'CLI-002', fiscalCode: ' rssmra80a01h501u ' },
+      ],
+    };
+    const result = prepareLegacyMigration('org-test', snapshot);
+    const duplicateIssue = result.issues.find((issue) => issue.code === 'DUPLICATE_FISCAL_CODE');
+
+    expect(result.ready).toBe(false);
+    expect(duplicateIssue).toBeDefined();
+    expect(duplicateIssue?.message).not.toContain('RSSMRA80A01H501U');
+  });
+
+  it('detects duplicate sale numbers without dropping either sale', () => {
+    const snapshot = {
+      ...validSnapshot,
+      sales: [
+        { id: 'SALE-001', saleNumber: 'VND-2026-0001', productId: 'OPT-001' },
+        { id: 'SALE-002', saleNumber: 'vnd-2026-0001', productId: 'OPT-001' },
+      ],
+    };
+    const result = prepareLegacyMigration('org-test', snapshot);
+
+    expect(result.ready).toBe(false);
+    expect(result.records.sales).toHaveLength(2);
+    expect(result.issues.map((issue) => issue.code)).toContain('DUPLICATE_SALE_NUMBER');
+  });
+
   it('reports sales whose product is missing', () => {
     const snapshot = {
       ...validSnapshot,
