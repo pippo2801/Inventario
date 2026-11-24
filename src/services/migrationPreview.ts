@@ -1,4 +1,4 @@
-import db from './db';
+import { db } from './db';
 import { prepareLegacyMigration, type LegacyMigrationSnapshot, type PreparedMigration } from './migrationAdapter';
 
 /**
@@ -15,11 +15,19 @@ export function createLocalMigrationPreview(organizationId: string): PreparedMig
   }
 
   const data = backup as Record<string, unknown>;
+  const collections = ['eyeglasses', 'clients', 'prescriptions', 'sales'] as const;
+
+  for (const collection of collections) {
+    if (!Array.isArray(data[collection])) {
+      throw new Error(`Il backup locale non contiene una raccolta valida: ${collection}.`);
+    }
+  }
+
   const snapshot: LegacyMigrationSnapshot = {
-    eyeglasses: Array.isArray(data.eyeglasses) ? data.eyeglasses as LegacyMigrationSnapshot['eyeglasses'] : [],
-    clients: Array.isArray(data.clients) ? data.clients as LegacyMigrationSnapshot['clients'] : [],
-    prescriptions: Array.isArray(data.prescriptions) ? data.prescriptions as LegacyMigrationSnapshot['prescriptions'] : [],
-    sales: Array.isArray(data.sales) ? data.sales as LegacyMigrationSnapshot['sales'] : [],
+    eyeglasses: data.eyeglasses as LegacyMigrationSnapshot['eyeglasses'],
+    clients: data.clients as LegacyMigrationSnapshot['clients'],
+    prescriptions: data.prescriptions as LegacyMigrationSnapshot['prescriptions'],
+    sales: data.sales as LegacyMigrationSnapshot['sales'],
   };
 
   return prepareLegacyMigration(organizationId, snapshot);
