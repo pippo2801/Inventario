@@ -168,6 +168,22 @@ describe('prepareLegacyMigration', () => {
     expect(result.ready).toBe(true);
   });
 
+  it('keeps historical links to soft-deleted clients', () => {
+    const deletedAt = '2026-09-15T09:30:00.000Z';
+    const snapshot = {
+      ...validSnapshot,
+      clients: [{ id: 'CLI-OLD', deletedAt }],
+      prescriptions: [{ id: 'PRE-OLD', clientId: 'CLI-OLD' }],
+      sales: [{ id: 'SALE-OLD', productId: 'OPT-001', clientId: 'CLI-OLD' }],
+    };
+    const result = prepareLegacyMigration('org-test', snapshot);
+
+    expect(result.ready).toBe(true);
+    expect(result.records.clients[0].deletedAt).toBe(deletedAt);
+    expect(result.records.prescriptions[0].clientId).toBe('CLI-OLD');
+    expect(result.records.sales[0].clientId).toBe('CLI-OLD');
+  });
+
   it('rejects malformed records and missing IDs', () => {
     const snapshot = {
       ...validSnapshot,
