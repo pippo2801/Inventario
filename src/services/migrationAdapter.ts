@@ -32,7 +32,8 @@ export interface MigrationIssue {
     | 'DUPLICATE_FISCAL_CODE'
     | 'DUPLICATE_SALE_NUMBER'
     | 'ORPHAN_PRODUCT_REFERENCE'
-    | 'ORPHAN_CLIENT_REFERENCE';
+    | 'ORPHAN_CLIENT_REFERENCE'
+    | 'ORPHAN_SALE_CLIENT_REFERENCE';
   collection?: MigrationCollection;
   legacyId?: string;
   message: string;
@@ -130,7 +131,7 @@ export function prepareLegacyMigration(
       if (collection === 'clients') {
         const fiscalCode = item.fiscalCode;
         if (typeof fiscalCode === 'string' && fiscalCode.trim()) {
-          const normalizedFiscalCode = fiscalCode.replace(/\\s+/g, '').toLocaleUpperCase('it-IT');
+          const normalizedFiscalCode = fiscalCode.replace(/\s+/g, '').toLocaleUpperCase('it-IT');
           if (seenFiscalCodes.has(normalizedFiscalCode)) {
             issues.push({
               code: 'DUPLICATE_FISCAL_CODE',
@@ -196,6 +197,23 @@ export function prepareLegacyMigration(
         collection: 'sales',
         legacyId: sale.legacyId,
         message: `La vendita ${sale.legacyId} non trova il prodotto locale ${String(productId ?? '')}.`,
+      });
+    }
+  }
+
+  for (const sale of records.sales) {
+    const clientId = sale.clientId;
+    if (
+      clientId !== undefined &&
+      clientId !== null &&
+      clientId !== '' &&
+      (typeof clientId !== 'string' || !ids.clients.has(clientId))
+    ) {
+      issues.push({
+        code: 'ORPHAN_SALE_CLIENT_REFERENCE',
+        collection: 'sales',
+        legacyId: sale.legacyId,
+        message: 'La vendita fa riferimento a un cliente locale non presente.',
       });
     }
   }
