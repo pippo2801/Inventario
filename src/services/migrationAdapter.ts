@@ -261,11 +261,13 @@ export function prepareLegacyMigration(
     }
   }
 
+  // Counts describe source entries, not only valid prepared records. This keeps
+  // the preview honest when malformed or duplicate records are rejected.
   const counts = {
-    eyeglasses: records.eyeglasses.length,
-    clients: records.clients.length,
-    prescriptions: records.prescriptions.length,
-    sales: records.sales.length,
+    eyeglasses: Array.isArray(snapshot?.eyeglasses) ? snapshot.eyeglasses.length : 0,
+    clients: Array.isArray(snapshot?.clients) ? snapshot.clients.length : 0,
+    prescriptions: Array.isArray(snapshot?.prescriptions) ? snapshot.prescriptions.length : 0,
+    sales: Array.isArray(snapshot?.sales) ? snapshot.sales.length : 0,
   };
 
   return {
