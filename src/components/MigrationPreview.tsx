@@ -45,7 +45,7 @@ export const MigrationPreview: React.FC = () => {
         non carica dati, non attiva Firebase e non modifica il database.
       </p>
       <p className="text-xs text-amber-200">
-        Attenzione: i controlli attuali verificano struttura, ID e collegamenti principali; non certificano ancora tutti i campi obbligatori dei quattro tipi di dati. Un esito senza anomalie non significa che i dati siano pronti per l'importazione.
+        La verifica controlla struttura, ID, collegamenti e presenza/tipo dei campi obbligatori dei quattro archivi. Non certifica ancora la correttezza semantica di ogni dato (per esempio date, intervalli ottici o coerenza commerciale) e non autorizza l'importazione cloud.
       </p>
       <button
         type="button"
