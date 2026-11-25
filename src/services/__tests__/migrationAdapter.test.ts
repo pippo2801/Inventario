@@ -86,6 +86,28 @@ describe('prepareLegacyMigration', () => {
     expect(result.issues.filter((issue) => issue.code === 'INVALID_RECORD')).toHaveLength(4);
   });
 
+
+  it('rejects semantically invalid dates, optical axes and sale arithmetic', () => {
+    const snapshot = {
+      ...validSnapshot,
+      eyeglasses: [product({ stockDate: 'not-a-date', purchasePrice: -1 })],
+      prescriptions: [prescription({ od: { sph: 0, cyl: 0, ax: 181 }, pd: { total: 0 } })],
+      sales: [sale({ listPrice: 100, discount: 120, finalPrice: 5, estimatedGrossMargin: 999 })],
+    };
+    const result = prepareLegacyMigration('org-test', snapshot);
+    expect(result.ready).toBe(false);
+    expect(result.records.eyeglasses).toHaveLength(0);
+    expect(result.records.prescriptions).toHaveLength(0);
+    expect(result.records.sales).toHaveLength(0);
+    expect(result.issues.filter((issue) => issue.code === 'INVALID_RECORD')).toHaveLength(3);
+    expect(result.issues.some((issue) => issue.message.includes('RSSMRA80A01H501U'))).toBe(false);
+  });
+
+  it('accepts optional fields omitted and null deletion timestamps', () => {
+    const result = prepareLegacyMigration('org-test', validSnapshot);
+    expect(result.ready).toBe(true);
+  });
+
   it('prepares tenant-scoped copies and preserves legacy IDs', () => {
     const result = prepareLegacyMigration('org-test', validSnapshot);
 
