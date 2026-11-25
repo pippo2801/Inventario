@@ -194,7 +194,7 @@ export function prepareLegacyMigration(
         issues.push({
           code: 'INVALID_RECORD',
           collection,
-          typeof item.id === 'string' && item.id.trim() ? { legacyId: item.id } : {},
+          ...(typeof item.id === 'string' && item.id.trim() ? { legacyId: item.id } : {}),
           message: `Campi obbligatori mancanti o non validi in ${collection}: ${invalidFields.join(', ')}.`,
         });
         continue;
