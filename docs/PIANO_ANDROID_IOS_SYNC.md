@@ -179,3 +179,13 @@ La vendita deve passare da un endpoint backend autenticato. Il backend verifica 
 4. Integrare lettura cloud in ambiente di test, poi migrazione preview/import.
 5. Integrare scritture e vendita atomica solo dopo test di concorrenza e regole.
 6. Test Android e iOS su dispositivi reali prima di dichiarare supporto completo.
+
+
+## Verifiche migrazione e identità - 25 novembre 2026
+
+- Il preparatore locale `migrationAdapter.ts` ora verifica i campi obbligatori e i tipi per occhiali, clienti, prescrizioni e vendite; controlla anche i valori ammessi per genere, stato prodotto, stato prescrizione e metodo di pagamento, oltre ai valori numerici OD/OS e PD totale.
+- I record che non superano i controlli non entrano nell'elenco dei record preparati; conteggi e diagnostica mantengono visibili gli elementi sorgente rifiutati. La verifica è pura e non scrive su Firebase.
+- La preview delle impostazioni è stata aggiornata per chiarire il limite residuo: i controlli strutturali non certificano la correttezza semantica di date, intervalli ottici e coerenza commerciale; non autorizzano l'importazione.
+- Confermato il disallineamento identità: `initialData.ts` crea un profilo locale `user-1`, mentre `db.setCurrentUser()` seleziona un profilo locale e `createdBy/updatedBy/operatorId` sono valorizzati con identificativi/nominativi applicativi. Nessuno di questi valori è un Firebase Auth UID.
+- Decisione: non convertire o riutilizzare gli ID locali come UID, non importare i ruoli locali e non associare automaticamente gli account tramite email. Occorre una mappatura esplicita `Firebase UID -> users/{uid} -> organizationId + role`, creata dal provisioning backend; mantenere separati `legacyId`, `actorUid` e nome visualizzato.
+- Firebase resta disattivato; nessun dato è stato caricato e nessuna identità cloud è stata creata.
