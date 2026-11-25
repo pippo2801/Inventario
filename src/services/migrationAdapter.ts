@@ -189,17 +189,6 @@ export function prepareLegacyMigration(
         continue;
       }
 
-      const invalidFields = validateRequiredFields(collection, item);
-      if (invalidFields.length > 0) {
-        issues.push({
-          code: 'INVALID_RECORD',
-          collection,
-          ...(typeof item.id === 'string' && item.id.trim() ? { legacyId: item.id } : {}),
-          message: `Campi obbligatori mancanti o non validi in ${collection}: ${invalidFields.join(', ')}.`,
-        });
-        continue;
-      }
-
       const legacyId = item.id;
       if (typeof legacyId !== 'string' || !legacyId.trim()) {
         issues.push({
@@ -216,6 +205,17 @@ export function prepareLegacyMigration(
           collection,
           legacyId,
           message: `ID locale duplicato ${legacyId} nella raccolta ${collection}.`,
+        });
+        continue;
+      }
+
+      const invalidFields = validateRequiredFields(collection, item);
+      if (invalidFields.length > 0) {
+        issues.push({
+          code: 'INVALID_RECORD',
+          collection,
+          ...(typeof item.id === 'string' && item.id.trim() ? { legacyId: item.id } : {}),
+          message: `Campi obbligatori mancanti o non validi in ${collection}: ${invalidFields.join(', ')}.`,
         });
         continue;
       }
