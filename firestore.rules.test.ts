@@ -77,18 +77,21 @@ describe('Firestore Security Rules', () => {
       // Main organization users
       await db.collection('users').doc('admin-uid').set({
         role: 'Amministratore',
+        active: true,
         name: 'Admin User',
         email: 'admin@test.com',
         organizationId: 'org-main',
       });
       await db.collection('users').doc('operator-uid').set({
         role: 'Operatore',
+        active: true,
         name: 'Operator User',
         email: 'operator@test.com',
         organizationId: 'org-main',
       });
       await db.collection('users').doc('client-uid').set({
         role: 'Cliente',
+        active: true,
         name: 'Client User',
         email: 'client@test.com',
         organizationId: 'org-main',
@@ -97,6 +100,7 @@ describe('Firestore Security Rules', () => {
       // Different organization admin
       await db.collection('users').doc('other-org-admin-uid').set({
         role: 'Amministratore',
+        active: true,
         name: 'Other Org Admin',
         email: 'admin@other.com',
         organizationId: 'org-other',
@@ -190,6 +194,38 @@ describe('Firestore Security Rules', () => {
       await setupUsers();
     });
 
+    it('denies organization access to an inactive operator', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await asCompat(context.firestore()).collection('users').doc('operator-uid').update({ active: false });
+      });
+      const db = asCompat(testEnv.authenticatedContext('operator-uid').firestore());
+      await assertFails(db.collection('eyeglasses').doc('eg-1').get());
+    });
+
+    it('denies organization administration to an inactive admin', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await asCompat(context.firestore()).collection('users').doc('admin-uid').update({ active: false });
+      });
+      const db = asCompat(testEnv.authenticatedContext('admin-uid').firestore());
+      await assertFails(db.collection('users').doc('operator-uid').get());
+      await assertFails(db.collection('users').doc('new-user').set({
+        role: 'Operatore', active: true, name: 'New User', organizationId: 'org-main',
+      }));
+    });
+
+    it('prevents users from reactivating or disabling their own account', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await asCompat(context.firestore()).collection('users').doc('operator-uid').update({ active: false });
+      });
+      const db = asCompat(testEnv.authenticatedContext('operator-uid').firestore());
+      await assertFails(db.collection('users').doc('operator-uid').update({ active: true }));
+    });
+
+    it('allows an active admin to deactivate a member in the same organization', async () => {
+      const db = asCompat(testEnv.authenticatedContext('admin-uid').firestore());
+      await assertSucceeds(db.collection('users').doc('operator-uid').update({ active: false }));
+    });
+
     it('allows admin to read all users in same org', async () => {
       const db = asCompat(testEnv.authenticatedContext('admin-uid').firestore());
       await assertSucceeds(db.collection('users').doc('operator-uid').get());
@@ -246,6 +282,7 @@ describe('Firestore Security Rules', () => {
       // Operator tries to change their own role to Amministratore
       await assertFails(db.collection('users').doc('operator-uid').update({
         role: 'Amministratore',
+        active: true,
       }));
     });
 
@@ -254,6 +291,7 @@ describe('Firestore Security Rules', () => {
       // Admin tries to change their own role to Operatore
       await assertFails(db.collection('users').doc('admin-uid').update({
         role: 'Operatore',
+        active: true,
       }));
     });
 
@@ -262,6 +300,7 @@ describe('Firestore Security Rules', () => {
       // Admin can change operator role
       await assertSucceeds(db.collection('users').doc('operator-uid').update({
         role: 'Cliente',
+        active: true,
       }));
     });
 
@@ -269,6 +308,7 @@ describe('Firestore Security Rules', () => {
       const db = asCompat(testEnv.authenticatedContext('operator-uid').firestore());
       await assertFails(db.collection('users').doc('new-user').set({
         role: 'Operatore',
+        active: true,
         name: 'New User',
         email: 'new@test.com',
         organizationId: 'org-main',
