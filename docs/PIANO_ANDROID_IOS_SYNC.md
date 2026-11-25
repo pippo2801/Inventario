@@ -230,3 +230,12 @@ La vendita deve passare da un endpoint backend autenticato. Il backend verifica 
 - Prima dell'integrazione occorrono un provider nativo di chiavi con implementazioni Android Keystore/iOS Keychain, un adapter persistente asincrono, bootstrap bloccante e migrazione legacy verificata. Il test automatico del modulo non sostituisce prove su dispositivi fisici.
 
 - Precisazione crittografica: `localVaultCrypto.ts` è un primitivo Web Crypto per test e ambienti che possiedono una `CryptoKey`; non è ancora il bridge Keystore/Keychain. Le chiavi non esportabili di Android Keystore/iOS Keychain non devono essere estratte per convertirle in una `CryptoKey` JavaScript. Il contratto di produzione dovrà esporre operazioni native `encrypt/decrypt` (o un adapter equivalente), mantenendo la chiave e l'operazione crittografica nel livello nativo; il formato envelope dovrà essere implementato e verificato in modo interoperabile tra piattaforme.
+
+## Bootstrap Firebase controllato - 25 novembre 2026
+
+- `src/services/firebase.ts` non usa più configurazione segnaposto e non esporta `null as any`: legge esclusivamente `VITE_FIREBASE_*`, verifica i sei campi necessari e inizializza Firebase App, Auth e Firestore solo quando la configurazione è completa.
+- Se manca anche un solo campo, `firebaseApp`, `auth` e `dbFirestore` restano `null` e `isFirebaseConfigured` è `false`. Nessun fallback automatico verso account demo o cloud.
+- `.env.example` documenta le variabili della Web App Firebase per `inventario-studio`. Il file `.env` reale resta escluso da Git tramite `.gitignore`.
+- Il file `android/app/google-services.json.firebase-incompleto` non è una configurazione valida per l'app attuale: dichiara `com.example.react_example`, mentre Capacitor usa `com.studiodipietro.inventario`; inoltre è un file Android e non fornisce l'App ID della Web App. Non va rinominato né copiato come configurazione attiva.
+- Questo passaggio inizializza soltanto gli SDK quando configurati: non crea utenti, non implementa ancora schermata/login, non legge o scrive Firestore, non cambia `DatabaseService`, non attiva la sincronizzazione e non pubblica regole.
+- Prossimi blocchi: recuperare la configurazione della Web App già registrata nella console Firebase; abilitare e verificare il provider Auth scelto; implementare login/logout e gate di sessione; definire provisioning backend e membership; poi adapter Firestore e sincronizzazione. Prima di collegare i dati locali, completare anche la persistenza cifrata e la migrazione verificata.
