@@ -195,6 +195,7 @@ describe('Firestore Security Rules', () => {
     });
 
     it('denies organization access to an inactive operator', async () => {
+      await setupTestDataWithRulesDisabled();
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await asCompat(context.firestore()).collection('users').doc('operator-uid').update({ active: false });
       });
@@ -218,6 +219,10 @@ describe('Firestore Security Rules', () => {
         await asCompat(context.firestore()).collection('users').doc('operator-uid').update({ active: false });
       });
       const db = asCompat(testEnv.authenticatedContext('operator-uid').firestore());
+      await assertFails(db.collection('users').doc('operator-uid').update({ active: false }));
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await asCompat(context.firestore()).collection('users').doc('operator-uid').update({ active: false });
+      });
       await assertFails(db.collection('users').doc('operator-uid').update({ active: true }));
     });
 
