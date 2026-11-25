@@ -84,6 +84,61 @@ function isRecord(value: unknown): value is LegacyRecord {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
+const REQUIRED_FIELDS: Record<MigrationCollection, Record<string, 'string' | 'number' | 'boolean' | 'object'>> = {
+  eyeglasses: {
+    sku: 'string', supplierCode: 'string', brand: 'string', model: 'string', color: 'string',
+    gender: 'string', purchasePrice: 'number', salePrice: 'number', isPromo: 'boolean',
+    isShowcase: 'boolean', location: 'string', status: 'string', stockDate: 'string',
+    imageUrl: 'string', createdAt: 'string', updatedAt: 'string', createdBy: 'string',
+    updatedBy: 'string', version: 'number', deletedAt: 'object',
+  },
+  clients: {
+    firstName: 'string', lastName: 'string', fiscalCode: 'string', phone: 'string',
+    isComplete: 'boolean', createdAt: 'string', updatedAt: 'string', createdBy: 'string',
+    updatedBy: 'string', version: 'number', deletedAt: 'object',
+  },
+  prescriptions: {
+    clientName: 'string', date: 'string', doctorOrOptometrist: 'string', od: 'object', os: 'object',
+    pd: 'object', status: 'string', createdAt: 'string', updatedAt: 'string', createdBy: 'string',
+    updatedBy: 'string', version: 'number', deletedAt: 'object',
+  },
+  sales: {
+    saleNumber: 'string', date: 'string', productId: 'string', productDescription: 'string',
+    productPurchasePrice: 'number', listPrice: 'number', discount: 'number', finalPrice: 'number',
+    estimatedGrossMargin: 'number', paymentMethod: 'string', receiptReference: 'string',
+    operatorId: 'string', operatorName: 'string', createdAt: 'string', deletedAt: 'object',
+  },
+};
+
+function hasExpectedType(value: unknown, expected: 'string' | 'number' | 'boolean' | 'object'): boolean {
+  if (expected === 'object') return value !== null && typeof value === 'object' && !Array.isArray(value);
+  if (expected === 'number') return typeof value === 'number' && Number.isFinite(value);
+  return typeof value === expected;
+}
+
+function validateRequiredFields(collection: MigrationCollection, item: LegacyRecord): string[] {
+  const missing: string[] = [];
+  for (const [field, expected] of Object.entries(REQUIRED_FIELDS[collection])) {
+    const value = item[field];
+    // deletedAt is nullable in the domain types; null is a valid explicit value.
+    if (field === 'deletedAt' && value === null) continue;
+    if (!hasExpectedType(value, expected)) missing.push(field);
+  }
+  if (collection === 'prescriptions') {
+    for (const eye of ['od', 'os']) {
+      const data = item[eye];
+      if (isRecord(data)) {
+        for (const field of ['sph', 'cyl', 'ax']) {
+          if (typeof data[field] !== 'number' || !Number.isFinite(data[field])) missing.push(eye + '.' + field);
+        }
+      }
+    }
+    const pd = item.pd;
+    if (isRecord(pd) && (typeof pd.total !== 'number' || !Number.isFinite(pd.total))) missing.push('pd.total');
+  }
+  return missing;
+}
+
 export function prepareLegacyMigration(
   organizationId: string,
   snapshot: LegacyMigrationSnapshot,
@@ -130,6 +185,17 @@ export function prepareLegacyMigration(
           code: 'INVALID_RECORD',
           collection,
           message: `Record non valido nella raccolta ${collection}.`,
+        });
+        continue;
+      }
+
+      const invalidFields = validateRequiredFields(collection, item);
+      if (invalidFields.length > 0) {
+        issues.push({
+          code: 'INVALID_RECORD',
+          collection,
+          typeof item.id === 'string' && item.id.trim() ? { legacyId: item.id } : {},
+          message: `Campi obbligatori mancanti o non validi in ${collection}: ${invalidFields.join(', ')}.`,
         });
         continue;
       }
