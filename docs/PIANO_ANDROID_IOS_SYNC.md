@@ -183,7 +183,7 @@ La vendita deve passare da un endpoint backend autenticato. Il backend verifica 
 
 ## Verifiche migrazione e identità - 25 novembre 2026
 
-- Il preparatore locale `migrationAdapter.ts` verifica campi obbligatori, tipi, campi testuali essenziali, date analizzabili, valori ammessi per genere/stato/metodo di pagamento, asse ottico (0–180), PD positivo, prezzi non negativi e coerenza aritmetica delle vendite.
+- Il preparatore locale `migrationAdapter.ts` verifica campi obbligatori, tipi, campi testuali essenziali, date analizzabili (con controllo calendario rigoroso per date ISO), versioni positive intere, valori ammessi per genere/stato/metodo di pagamento, asse ottico (0–180), PD positivo, prezzi non negativi e coerenza aritmetica delle vendite.
 - I controlli ottici restano volutamente limitati a vincoli oggettivi già presenti nell'interfaccia: non vengono imposti limiti clinici inventati a sfera/cilindro/addizione. I record incompleti ammessi dal modello (ad esempio cliente senza codice fiscale/telefono e prodotto senza foto) non vengono scartati per quei soli campi.
 - I record che non superano i controlli non entrano nell'elenco dei record preparati; conteggi e diagnostica mantengono visibili gli elementi sorgente rifiutati. La verifica è pura e non scrive su Firebase.
 - La preview non autorizza l'importazione: resta necessaria una revisione umana dei record segnalati e dei casi semanticamente ambigui.
