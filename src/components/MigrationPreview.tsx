@@ -44,6 +44,9 @@ export const MigrationPreview: React.FC = () => {
         Controlla i dati presenti su questo dispositivo. Questa verifica è soltanto locale:
         non carica dati, non attiva Firebase e non modifica il database.
       </p>
+      <p className="text-xs text-amber-200">
+        Attenzione: i controlli attuali verificano struttura, ID e collegamenti principali; non certificano ancora tutti i campi obbligatori dei quattro tipi di dati. Un esito senza anomalie non significa che i dati siano pronti per l'importazione.
+      </p>
       <button
         type="button"
         onClick={inspectLocalData}
