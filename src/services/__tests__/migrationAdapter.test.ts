@@ -60,7 +60,7 @@ describe('prepareLegacyMigration', () => {
   it('keeps source-entry counts even when some records cannot be prepared', () => {
     const snapshot = {
       ...validSnapshot,
-      clients: [null, { id: 'CLI-001' }, { firstName: 'Missing ID' }],
+      clients: [null, client({ id: 'CLI-002' }), { firstName: 'Missing ID' }],
     } as unknown as LegacyMigrationSnapshot;
     const result = prepareLegacyMigration('org-test', snapshot);
 
