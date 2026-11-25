@@ -127,7 +127,16 @@ function validateRequiredFields(collection: MigrationCollection, item: LegacyRec
     // deletedAt is nullable in the domain types; null is a valid explicit value.
     if (field === 'deletedAt' && value === null) continue;
     if (!hasExpectedType(value, expected)) invalid.push(field);
-    else if (expected === 'string' && !(value as string).trim()) invalid.push(field);
+  }
+
+  const nonEmptyFields: Record<MigrationCollection, string[]> = {
+    eyeglasses: ['sku', 'supplierCode', 'brand', 'model', 'color', 'gender', 'location', 'status', 'stockDate', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy'],
+    clients: ['firstName', 'lastName', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy'],
+    prescriptions: ['clientName', 'date', 'doctorOrOptometrist', 'status', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy'],
+    sales: ['saleNumber', 'date', 'productId', 'productDescription', 'paymentMethod', 'operatorId', 'operatorName', 'createdAt'],
+  };
+  for (const field of nonEmptyFields[collection]) {
+    if (typeof item[field] === 'string' && !item[field].trim()) invalid.push(field);
   }
 
   const dateFields: Record<MigrationCollection, string[]> = {
@@ -148,9 +157,6 @@ function validateRequiredFields(collection: MigrationCollection, item: LegacyRec
     }
     if (item.promoPrice !== undefined && item.promoPrice !== null &&
       (typeof item.promoPrice !== 'number' || !Number.isFinite(item.promoPrice) || item.promoPrice < 0)) {
-      invalid.push('promoPrice');
-    }
-    if (item.isPromo === true && (typeof item.promoPrice !== 'number' || item.promoPrice < 0)) {
       invalid.push('promoPrice');
     }
   }
