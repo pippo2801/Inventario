@@ -19,12 +19,17 @@ service cloud.firestore {
       return requesterData().organizationId;
     }
 
+    // A disabled member must lose all organization-level access immediately.
+    function requesterIsActive() {
+      return requesterExists() && requesterData().active == true;
+    }
+
     function isAdmin() {
-      return requesterExists() && requesterData().role == 'Amministratore';
+      return requesterIsActive() && requesterData().role == 'Amministratore';
     }
 
     function isOperatorOrAdmin() {
-      return requesterExists() &&
+      return requesterIsActive() &&
         requesterData().role in ['Amministratore', 'Operatore'];
     }
 
@@ -54,18 +59,21 @@ service cloud.firestore {
 
       allow create: if isAdmin() &&
         sameOrgRequest() &&
-        validRole(request.resource.data.role);
+        validRole(request.resource.data.role) &&
+        request.resource.data.active is bool;
 
       allow update: if (
           isOwner(userId) &&
           request.resource.data.role == resource.data.role &&
-          request.resource.data.organizationId == resource.data.organizationId
+          request.resource.data.organizationId == resource.data.organizationId &&
+          request.resource.data.active == resource.data.active
         ) || (
           isAdmin() &&
           !isOwner(userId) &&
           resource.data.organizationId == requesterOrgId() &&
           request.resource.data.organizationId == resource.data.organizationId &&
-          validRole(request.resource.data.role)
+          validRole(request.resource.data.role) &&
+          request.resource.data.active is bool
         );
 
       allow delete: if isAdmin() &&
