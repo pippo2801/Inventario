@@ -41,6 +41,29 @@ describe('extractLegacyMigrationSnapshot', () => {
 });
 
 describe('prepareLegacyMigration', () => {
+  it('reports invalid collection values instead of silently accepting them', () => {
+    const snapshot = {
+      ...validSnapshot,
+      sales: null,
+    } as unknown as LegacyMigrationSnapshot;
+    const result = prepareLegacyMigration('org-test', snapshot);
+
+    expect(result.ready).toBe(false);
+    expect(result.issues.map((issue) => issue.code)).toContain('INVALID_COLLECTION');
+  });
+
+  it('keeps source-entry counts even when some records cannot be prepared', () => {
+    const snapshot = {
+      ...validSnapshot,
+      clients: [null, { id: 'CLI-001' }, { firstName: 'Missing ID' }],
+    } as unknown as LegacyMigrationSnapshot;
+    const result = prepareLegacyMigration('org-test', snapshot);
+
+    expect(result.ready).toBe(false);
+    expect(result.counts.clients).toBe(3);
+    expect(result.records.clients).toHaveLength(1);
+  });
+
   it('prepares tenant-scoped copies and preserves legacy IDs', () => {
     const result = prepareLegacyMigration('org-test', validSnapshot);
 
