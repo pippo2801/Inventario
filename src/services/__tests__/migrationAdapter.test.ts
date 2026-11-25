@@ -90,7 +90,7 @@ describe('prepareLegacyMigration', () => {
   it('rejects semantically invalid dates, optical axes and sale arithmetic', () => {
     const snapshot = {
       ...validSnapshot,
-      eyeglasses: [product({ stockDate: 'not-a-date', purchasePrice: -1 })],
+      eyeglasses: [product({ stockDate: '2026-02-31', purchasePrice: -1, version: 0 })],
       prescriptions: [prescription({ od: { sph: 0, cyl: 0, ax: 181 }, pd: { total: 0 } })],
       sales: [sale({ listPrice: 100, discount: 120, finalPrice: 5, estimatedGrossMargin: 999 })],
     };
@@ -101,6 +101,18 @@ describe('prepareLegacyMigration', () => {
     expect(result.records.sales).toHaveLength(0);
     expect(result.issues.filter((issue) => issue.code === 'INVALID_RECORD')).toHaveLength(3);
     expect(result.issues.some((issue) => issue.message.includes('RSSMRA80A01H501U'))).toBe(false);
+  });
+
+  it('rejects impossible ISO calendar dates and non-positive record versions', () => {
+    const result = prepareLegacyMigration('org-test', {
+      ...validSnapshot,
+      eyeglasses: [product({ stockDate: '2026-02-31' })],
+      clients: [client({ version: 0 })],
+    });
+    expect(result.ready).toBe(false);
+    expect(result.records.eyeglasses).toHaveLength(0);
+    expect(result.records.clients).toHaveLength(0);
+    expect(result.issues.filter((issue) => issue.code === 'INVALID_RECORD')).toHaveLength(2);
   });
 
   it('allows intentionally blank photo, incomplete client and receipt fields', () => {
