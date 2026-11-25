@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { extractLegacyMigrationSnapshot, prepareLegacyMigration, type LegacyMigrationSnapshot } from '../migrationAdapter';
 
 const validSnapshot: LegacyMigrationSnapshot = {
-  eyeglasses: [{ id: 'OPT-001', brand: 'Ray-Ban', status: 'Disponibile' }],
-  clients: [{ id: 'CLI-001', firstName: 'Mario' }],
-  prescriptions: [{ id: 'PRE-001', clientId: 'CLI-001' }],
-  sales: [{ id: 'SALE-001', productId: 'OPT-001', finalPrice: 120 }],
+  eyeglasses: [{ id: 'OPT-001', sku: 'RB-001', supplierCode: 'SUP-001', brand: 'Ray-Ban', model: 'Wayfarer', color: 'Nero', gender: 'Unisex', purchasePrice: 60, salePrice: 120, isPromo: false, isShowcase: false, location: 'Magazzino', status: 'Disponibile', stockDate: '2026-01-01', imageUrl: '', createdAt: '2026-01-01', updatedAt: '2026-01-01', createdBy: 'admin', updatedBy: 'admin', version: 1, deletedAt: null }],
+  clients: [{ id: 'CLI-001', firstName: 'Mario', lastName: 'Rossi', fiscalCode: 'RSSMRA80A01H501U', phone: '3331234567', isComplete: true, createdAt: '2026-01-01', updatedAt: '2026-01-01', createdBy: 'admin', updatedBy: 'admin', version: 1, deletedAt: null }],
+  prescriptions: [{ id: 'PRE-001', clientId: 'CLI-001', clientName: 'Mario Rossi', date: '2026-01-01', doctorOrOptometrist: 'Dottore', od: { sph: 0, cyl: 0, ax: 0 }, os: { sph: 0, cyl: 0, ax: 0 }, pd: { total: 62 }, status: 'CONFERMATA', createdAt: '2026-01-01', updatedAt: '2026-01-01', createdBy: 'admin', updatedBy: 'admin', version: 1, deletedAt: null }],
+  sales: [{ id: 'SALE-001', saleNumber: 'VND-2026-001', date: '2026-01-01', productId: 'OPT-001', productDescription: 'Ray-Ban Wayfarer', productPurchasePrice: 60, listPrice: 120, discount: 0, finalPrice: 120, estimatedGrossMargin: 60, paymentMethod: 'Contanti', receiptReference: 'R-001', operatorId: 'admin', operatorName: 'Admin', createdAt: '2026-01-01', deletedAt: null }],
 };
 
 describe('extractLegacyMigrationSnapshot', () => {
@@ -62,6 +62,23 @@ describe('prepareLegacyMigration', () => {
     expect(result.ready).toBe(false);
     expect(result.counts.clients).toBe(3);
     expect(result.records.clients).toHaveLength(1);
+  });
+
+  it('rejects records missing required domain fields or with invalid field types', () => {
+    const snapshot = {
+      ...validSnapshot,
+      eyeglasses: [{ ...validSnapshot.eyeglasses[0], salePrice: '120' }],
+      clients: [{ ...validSnapshot.clients[0], phone: undefined }],
+      prescriptions: [{ ...validSnapshot.prescriptions[0], od: { sph: 0, cyl: '0', ax: 0 } }],
+      sales: [{ ...validSnapshot.sales[0], finalPrice: Number.NaN }],
+    };
+    const result = prepareLegacyMigration('org-test', snapshot);
+    expect(result.ready).toBe(false);
+    expect(result.records.eyeglasses).toHaveLength(0);
+    expect(result.records.clients).toHaveLength(0);
+    expect(result.records.prescriptions).toHaveLength(0);
+    expect(result.records.sales).toHaveLength(0);
+    expect(result.issues.filter((issue) => issue.code === 'INVALID_RECORD')).toHaveLength(4);
   });
 
   it('prepares tenant-scoped copies and preserves legacy IDs', () => {
