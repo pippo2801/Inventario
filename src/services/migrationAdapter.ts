@@ -120,13 +120,13 @@ function isValidDate(value: unknown): boolean {
   if (typeof value !== 'string' || !value.trim()) return false;
   const normalized = value.trim();
   const datePart = normalized.slice(0, 10);
-  if (/^\\d{4}-\\d{2}-\\d{2}$/.test(datePart)) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
     const [year, month, day] = datePart.split('-').map(Number);
     const parsed = new Date(Date.UTC(year, month - 1, day));
     const calendarDateIsValid = parsed.getUTCFullYear() === year &&
       parsed.getUTCMonth() === month - 1 && parsed.getUTCDate() === day;
     if (!calendarDateIsValid) return false;
-    return normalized.length === 10 || (/^\\d{4}-\\d{2}-\\d{2}T/.test(normalized) && Number.isFinite(Date.parse(normalized)));
+    return normalized.length === 10 || (/^\d{4}-\d{2}-\d{2}T/.test(normalized) && Number.isFinite(Date.parse(normalized)));
   }
   // Retain compatibility with legacy date strings outside ISO format.
   return Number.isFinite(Date.parse(normalized));
