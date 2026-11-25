@@ -117,7 +117,19 @@ function hasExpectedType(value: unknown, expected: 'string' | 'number' | 'boolea
 }
 
 function isValidDate(value: unknown): boolean {
-  return typeof value === 'string' && value.trim().length > 0 && Number.isFinite(Date.parse(value));
+  if (typeof value !== 'string' || !value.trim()) return false;
+  const normalized = value.trim();
+  const datePart = normalized.slice(0, 10);
+  if (/^\\d{4}-\\d{2}-\\d{2}$/.test(datePart)) {
+    const [year, month, day] = datePart.split('-').map(Number);
+    const parsed = new Date(Date.UTC(year, month - 1, day));
+    const calendarDateIsValid = parsed.getUTCFullYear() === year &&
+      parsed.getUTCMonth() === month - 1 && parsed.getUTCDate() === day;
+    if (!calendarDateIsValid) return false;
+    return normalized.length === 10 || (/^\\d{4}-\\d{2}-\\d{2}T/.test(normalized) && Number.isFinite(Date.parse(normalized)));
+  }
+  // Retain compatibility with legacy date strings outside ISO format.
+  return Number.isFinite(Date.parse(normalized));
 }
 
 function validateRequiredFields(collection: MigrationCollection, item: LegacyRecord): string[] {
@@ -148,6 +160,11 @@ function validateRequiredFields(collection: MigrationCollection, item: LegacyRec
   for (const field of dateFields[collection]) {
     if (!isValidDate(item[field])) invalid.push(field);
   }
+  if (['eyeglasses', 'clients', 'prescriptions'].includes(collection) &&
+    (!Number.isInteger(item.version) || (item.version as number) < 1)) {
+    invalid.push('version');
+  }
+
   if (collection === 'eyeglasses') {
     for (const field of ['promoStartDate', 'promoEndDate']) {
       if (item[field] !== undefined && item[field] !== '' && !isValidDate(item[field])) invalid.push(field);
