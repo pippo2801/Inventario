@@ -103,6 +103,17 @@ describe('prepareLegacyMigration', () => {
     expect(result.issues.some((issue) => issue.message.includes('RSSMRA80A01H501U'))).toBe(false);
   });
 
+  it('allows intentionally blank photo, incomplete client and receipt fields', () => {
+    const snapshot = {
+      ...validSnapshot,
+      eyeglasses: [product({ imageUrl: '' })],
+      clients: [client({ fiscalCode: '', phone: '', isComplete: false })],
+      sales: [sale({ receiptReference: '' })],
+    };
+    const result = prepareLegacyMigration('org-test', snapshot);
+    expect(result.ready).toBe(true);
+  });
+
   it('accepts optional fields omitted and null deletion timestamps', () => {
     const result = prepareLegacyMigration('org-test', validSnapshot);
     expect(result.ready).toBe(true);
