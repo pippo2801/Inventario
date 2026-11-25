@@ -116,21 +116,52 @@ function hasExpectedType(value: unknown, expected: 'string' | 'number' | 'boolea
   return typeof value === expected;
 }
 
+function isValidDate(value: unknown): boolean {
+  return typeof value === 'string' && value.trim().length > 0 && Number.isFinite(Date.parse(value));
+}
+
 function validateRequiredFields(collection: MigrationCollection, item: LegacyRecord): string[] {
-  const missing: string[] = [];
+  const invalid: string[] = [];
   for (const [field, expected] of Object.entries(REQUIRED_FIELDS[collection])) {
     const value = item[field];
     // deletedAt is nullable in the domain types; null is a valid explicit value.
     if (field === 'deletedAt' && value === null) continue;
-    if (!hasExpectedType(value, expected)) missing.push(field);
+    if (!hasExpectedType(value, expected)) invalid.push(field);
+    else if (expected === 'string' && !(value as string).trim()) invalid.push(field);
   }
+
+  const dateFields: Record<MigrationCollection, string[]> = {
+    eyeglasses: ['stockDate', 'createdAt', 'updatedAt'],
+    clients: ['createdAt', 'updatedAt'],
+    prescriptions: ['date', 'createdAt', 'updatedAt'],
+    sales: ['date', 'createdAt'],
+  };
+  for (const field of dateFields[collection]) {
+    if (!isValidDate(item[field])) invalid.push(field);
+  }
+  if (collection === 'eyeglasses') {
+    for (const field of ['promoStartDate', 'promoEndDate']) {
+      if (item[field] !== undefined && item[field] !== '' && !isValidDate(item[field])) invalid.push(field);
+    }
+    for (const field of ['purchasePrice', 'salePrice']) {
+      if (typeof item[field] === 'number' && item[field] < 0) invalid.push(field);
+    }
+    if (item.promoPrice !== undefined && item.promoPrice !== null &&
+      (typeof item.promoPrice !== 'number' || !Number.isFinite(item.promoPrice) || item.promoPrice < 0)) {
+      invalid.push('promoPrice');
+    }
+    if (item.isPromo === true && (typeof item.promoPrice !== 'number' || item.promoPrice < 0)) {
+      invalid.push('promoPrice');
+    }
+  }
+
   const allowedValues: Partial<Record<MigrationCollection, Record<string, string[]>>> = {
     eyeglasses: { gender: ['Uomo', 'Donna', 'Unisex'], status: ['Disponibile', 'Venduto'] },
     prescriptions: { status: ['CONFERMATA', 'DA_VERIFICARE', 'COMPLETA'] },
     sales: { paymentMethod: ['Contanti', 'POS / Carta', 'Carta', 'Bonifico', 'Bonifico Bancario', 'Satispay / Altro', 'Altro'] },
   };
   for (const [field, values] of Object.entries(allowedValues[collection] ?? {})) {
-    if (typeof item[field] === 'string' && !values.includes(item[field] as string)) missing.push(field);
+    if (typeof item[field] === 'string' && !values.includes(item[field] as string)) invalid.push(field);
   }
 
   if (collection === 'prescriptions') {
@@ -138,14 +169,42 @@ function validateRequiredFields(collection: MigrationCollection, item: LegacyRec
       const data = item[eye];
       if (isRecord(data)) {
         for (const field of ['sph', 'cyl', 'ax']) {
-          if (typeof data[field] !== 'number' || !Number.isFinite(data[field])) missing.push(eye + '.' + field);
+          if (typeof data[field] !== 'number' || !Number.isFinite(data[field])) invalid.push(eye + '.' + field);
         }
+        if (typeof data.ax === 'number' && (data.ax < 0 || data.ax > 180)) invalid.push(eye + '.ax');
+        if (data.add !== undefined && (typeof data.add !== 'number' || !Number.isFinite(data.add))) invalid.push(eye + '.add');
       }
     }
     const pd = item.pd;
-    if (isRecord(pd) && (typeof pd.total !== 'number' || !Number.isFinite(pd.total))) missing.push('pd.total');
+    if (isRecord(pd)) {
+      if (typeof pd.total !== 'number' || !Number.isFinite(pd.total) || pd.total <= 0) invalid.push('pd.total');
+      for (const eye of ['od', 'os']) {
+        if (pd[eye] !== undefined && (typeof pd[eye] !== 'number' || !Number.isFinite(pd[eye]) || (pd[eye] as number) <= 0)) {
+          invalid.push('pd.' + eye);
+        }
+      }
+    }
+    if (item.mountingHeight !== undefined &&
+      (typeof item.mountingHeight !== 'number' || !Number.isFinite(item.mountingHeight) || item.mountingHeight <= 0)) {
+      invalid.push('mountingHeight');
+    }
+    if (item.lensType !== undefined && !['Monofocali', 'Progressive', 'Degressive', 'Da riposo', 'Solari Graduati'].includes(String(item.lensType))) {
+      invalid.push('lensType');
+    }
   }
-  return missing;
+
+  if (collection === 'sales') {
+    for (const field of ['productPurchasePrice', 'listPrice', 'discount', 'finalPrice']) {
+      if (typeof item[field] === 'number' && item[field] < 0) invalid.push(field);
+    }
+    if (typeof item.discount === 'number' && typeof item.listPrice === 'number' && item.discount > item.listPrice) invalid.push('discount');
+    if (typeof item.finalPrice === 'number' && typeof item.listPrice === 'number' && typeof item.discount === 'number' &&
+      Math.abs(item.finalPrice - (item.listPrice - item.discount)) > 0.02) invalid.push('finalPrice');
+    if (typeof item.estimatedGrossMargin === 'number' && typeof item.finalPrice === 'number' && typeof item.productPurchasePrice === 'number' &&
+      Math.abs(item.estimatedGrossMargin - (item.finalPrice - item.productPurchasePrice)) > 0.02) invalid.push('estimatedGrossMargin');
+  }
+
+  return [...new Set(invalid)];
 }
 
 export function prepareLegacyMigration(
