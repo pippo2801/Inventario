@@ -239,7 +239,7 @@ describe('prepareLegacyMigration', () => {
   it('allows prescriptions without a linked client', () => {
     const snapshot = {
       ...validSnapshot,
-      prescriptions: [{ id: 'PRE-WALK-IN' }],
+      prescriptions: [prescription({ id: 'PRE-WALK-IN', clientId: undefined })],
     };
     const result = prepareLegacyMigration('org-test', snapshot);
     expect(result.ready).toBe(true);
