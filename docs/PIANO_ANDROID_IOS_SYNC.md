@@ -183,9 +183,18 @@ La vendita deve passare da un endpoint backend autenticato. Il backend verifica 
 
 ## Verifiche migrazione e identità - 25 novembre 2026
 
-- Il preparatore locale `migrationAdapter.ts` ora verifica i campi obbligatori e i tipi per occhiali, clienti, prescrizioni e vendite; controlla anche i valori ammessi per genere, stato prodotto, stato prescrizione e metodo di pagamento, oltre ai valori numerici OD/OS e PD totale.
+- Il preparatore locale `migrationAdapter.ts` verifica campi obbligatori, tipi, campi testuali essenziali, date analizzabili, valori ammessi per genere/stato/metodo di pagamento, asse ottico (0–180), PD positivo, prezzi non negativi e coerenza aritmetica delle vendite.
+- I controlli ottici restano volutamente limitati a vincoli oggettivi già presenti nell'interfaccia: non vengono imposti limiti clinici inventati a sfera/cilindro/addizione. I record incompleti ammessi dal modello (ad esempio cliente senza codice fiscale/telefono e prodotto senza foto) non vengono scartati per quei soli campi.
 - I record che non superano i controlli non entrano nell'elenco dei record preparati; conteggi e diagnostica mantengono visibili gli elementi sorgente rifiutati. La verifica è pura e non scrive su Firebase.
-- La preview delle impostazioni è stata aggiornata per chiarire il limite residuo: i controlli strutturali non certificano la correttezza semantica di date, intervalli ottici e coerenza commerciale; non autorizzano l'importazione.
+- La preview non autorizza l'importazione: resta necessaria una revisione umana dei record segnalati e dei casi semanticamente ambigui.
 - Confermato il disallineamento identità: `initialData.ts` crea un profilo locale `user-1`, mentre `db.setCurrentUser()` seleziona un profilo locale e `createdBy/updatedBy/operatorId` sono valorizzati con identificativi/nominativi applicativi. Nessuno di questi valori è un Firebase Auth UID.
 - Decisione: non convertire o riutilizzare gli ID locali come UID, non importare i ruoli locali e non associare automaticamente gli account tramite email. Occorre una mappatura esplicita `Firebase UID -> users/{uid} -> organizationId + role`, creata dal provisioning backend; mantenere separati `legacyId`, `actorUid` e nome visualizzato.
 - Firebase resta disattivato; nessun dato è stato caricato e nessuna identità cloud è stata creata.
+
+
+## Sicurezza membership attiva - 25 novembre 2026
+
+- L'audit delle Firestore Rules ha rilevato che i controlli verificavano UID, ruolo e organizzazione ma non il flag `active`: un membro disattivato avrebbe potuto continuare a leggere/scrivere i dati dello studio fino alla revoca della sessione o alla rimozione del documento.
+- Correzione sul branch: le funzioni `isAdmin()` e `isOperatorOrAdmin()` richiedono ora anche `users/{uid}.active == true`. Il profilo personale può ancora essere letto dal titolare per consentire la visualizzazione dello stato account, ma il titolare non può modificare autonomamente `active`; l'amministratore attivo può disattivare un membro del proprio studio.
+- Creazione e aggiornamento amministrativo di un profilo richiedono un campo `active` booleano. I test emulator coprono membro disattivato, amministratore disattivato, tentativi di riattivazione autonoma e disattivazione da parte dell'amministratore.
+- Questa modifica è ancora da validare nella pipeline CI sul nuovo HEAD. Non implica pubblicazione delle regole su Firebase: le regole repository non diventano attive finché non vengono distribuite esplicitamente.
