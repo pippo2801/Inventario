@@ -8,6 +8,11 @@ const validSnapshot: LegacyMigrationSnapshot = {
   sales: [{ id: 'SALE-001', saleNumber: 'VND-2026-001', date: '2026-01-01', productId: 'OPT-001', productDescription: 'Ray-Ban Wayfarer', productPurchasePrice: 60, listPrice: 120, discount: 0, finalPrice: 120, estimatedGrossMargin: 60, paymentMethod: 'Contanti', receiptReference: 'R-001', operatorId: 'admin', operatorName: 'Admin', createdAt: '2026-01-01', deletedAt: null }],
 };
 
+const product = (overrides: Record<string, unknown> = {}) => ({ ...validSnapshot.eyeglasses[0], ...overrides });
+const client = (overrides: Record<string, unknown> = {}) => ({ ...validSnapshot.clients[0], ...overrides });
+const prescription = (overrides: Record<string, unknown> = {}) => ({ ...validSnapshot.prescriptions[0], ...overrides });
+const sale = (overrides: Record<string, unknown> = {}) => ({ ...validSnapshot.sales[0], ...overrides });
+
 describe('extractLegacyMigrationSnapshot', () => {
   it('extracts all four collections from the actual flat backup shape', () => {
     const backup = {
@@ -117,7 +122,7 @@ describe('prepareLegacyMigration', () => {
       ...validSnapshot,
       eyeglasses: [
         ...validSnapshot.eyeglasses,
-        { id: 'OPT-001', brand: 'Duplicate' },
+        product({ id: 'OPT-001', brand: 'Duplicate' }),
       ],
     };
     const result = prepareLegacyMigration('org-test', snapshot);
@@ -131,8 +136,8 @@ describe('prepareLegacyMigration', () => {
     const snapshot = {
       ...validSnapshot,
       eyeglasses: [
-        { id: 'OPT-001', sku: 'RB-3025' },
-        { id: 'OPT-002', sku: 'rb-3025' },
+        product({ id: 'OPT-001', sku: 'RB-3025' }),
+        product({ id: 'OPT-002', sku: 'rb-3025' }),
       ],
       sales: [],
     };
@@ -147,8 +152,8 @@ describe('prepareLegacyMigration', () => {
     const snapshot = {
       ...validSnapshot,
       clients: [
-        { id: 'CLI-001', fiscalCode: 'RSSMRA80A01H501U' },
-        { id: 'CLI-002', fiscalCode: ' rssmra80a01h501u ' },
+        client({ id: 'CLI-001', fiscalCode: 'RSSMRA80A01H501U' }),
+        client({ id: 'CLI-002', fiscalCode: ' rssmra80a01h501u ' }),
       ],
     };
     const result = prepareLegacyMigration('org-test', snapshot);
@@ -163,8 +168,8 @@ describe('prepareLegacyMigration', () => {
     const snapshot = {
       ...validSnapshot,
       sales: [
-        { id: 'SALE-001', saleNumber: 'VND-2026-0001', productId: 'OPT-001' },
-        { id: 'SALE-002', saleNumber: 'vnd-2026-0001', productId: 'OPT-001' },
+        sale({ id: 'SALE-001', saleNumber: 'VND-2026-0001', productId: 'OPT-001' }),
+        sale({ id: 'SALE-002', saleNumber: 'vnd-2026-0001', productId: 'OPT-001' }),
       ],
     };
     const result = prepareLegacyMigration('org-test', snapshot);
@@ -177,7 +182,7 @@ describe('prepareLegacyMigration', () => {
   it('reports sales whose product is missing', () => {
     const snapshot = {
       ...validSnapshot,
-      sales: [{ id: 'SALE-ORPHAN', productId: 'OPT-MISSING' }],
+      sales: [sale({ id: 'SALE-ORPHAN', productId: 'OPT-MISSING' })],
     };
     const result = prepareLegacyMigration('org-test', snapshot);
 
@@ -188,7 +193,7 @@ describe('prepareLegacyMigration', () => {
   it('reports prescriptions whose referenced client is missing', () => {
     const snapshot = {
       ...validSnapshot,
-      prescriptions: [{ id: 'PRE-ORPHAN', clientId: 'CLI-MISSING' }],
+      prescriptions: [prescription({ id: 'PRE-ORPHAN', clientId: 'CLI-MISSING' })],
     };
     const result = prepareLegacyMigration('org-test', snapshot);
 
@@ -199,7 +204,7 @@ describe('prepareLegacyMigration', () => {
   it('reports sales whose optional client reference is missing', () => {
     const snapshot = {
       ...validSnapshot,
-      sales: [{ id: 'SALE-ORPHAN-CLIENT', productId: 'OPT-001', clientId: 'CLI-MISSING' }],
+      sales: [sale({ id: 'SALE-ORPHAN-CLIENT', productId: 'OPT-001', clientId: 'CLI-MISSING' })],
     };
     const result = prepareLegacyMigration('org-test', snapshot);
 
@@ -210,7 +215,7 @@ describe('prepareLegacyMigration', () => {
   it('allows sales without an associated client', () => {
     const snapshot = {
       ...validSnapshot,
-      sales: [{ id: 'SALE-WALK-IN', productId: 'OPT-001' }],
+      sales: [sale({ id: 'SALE-WALK-IN', productId: 'OPT-001' })],
     };
     const result = prepareLegacyMigration('org-test', snapshot);
 
@@ -221,8 +226,8 @@ describe('prepareLegacyMigration', () => {
     const deletedAt = '2026-10-02T12:00:00.000Z';
     const snapshot = {
       ...validSnapshot,
-      eyeglasses: [{ id: 'OPT-OLD', sku: 'OLD-001', deletedAt }],
-      sales: [{ id: 'SALE-HISTORY', productId: 'OPT-OLD', deletedAt: null }],
+      eyeglasses: [product({ id: 'OPT-OLD', sku: 'OLD-001', deletedAt })],
+      sales: [sale({ id: 'SALE-HISTORY', productId: 'OPT-OLD', deletedAt: null })],
     };
     const result = prepareLegacyMigration('org-test', snapshot);
 
@@ -244,9 +249,9 @@ describe('prepareLegacyMigration', () => {
     const deletedAt = '2026-09-15T09:30:00.000Z';
     const snapshot = {
       ...validSnapshot,
-      clients: [{ id: 'CLI-OLD', deletedAt }],
-      prescriptions: [{ id: 'PRE-OLD', clientId: 'CLI-OLD' }],
-      sales: [{ id: 'SALE-OLD', productId: 'OPT-001', clientId: 'CLI-OLD' }],
+      clients: [client({ id: 'CLI-OLD', deletedAt })],
+      prescriptions: [prescription({ id: 'PRE-OLD', clientId: 'CLI-OLD' })],
+      sales: [sale({ id: 'SALE-OLD', productId: 'OPT-001', clientId: 'CLI-OLD' })],
     };
     const result = prepareLegacyMigration('org-test', snapshot);
 
