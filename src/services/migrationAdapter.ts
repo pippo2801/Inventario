@@ -90,23 +90,23 @@ const REQUIRED_FIELDS: Record<MigrationCollection, Record<string, 'string' | 'nu
     gender: 'string', purchasePrice: 'number', salePrice: 'number', isPromo: 'boolean',
     isShowcase: 'boolean', location: 'string', status: 'string', stockDate: 'string',
     imageUrl: 'string', createdAt: 'string', updatedAt: 'string', createdBy: 'string',
-    updatedBy: 'string', version: 'number', deletedAt: 'object',
+    updatedBy: 'string', version: 'number', deletedAt: 'string',
   },
   clients: {
     firstName: 'string', lastName: 'string', fiscalCode: 'string', phone: 'string',
     isComplete: 'boolean', createdAt: 'string', updatedAt: 'string', createdBy: 'string',
-    updatedBy: 'string', version: 'number', deletedAt: 'object',
+    updatedBy: 'string', version: 'number', deletedAt: 'string',
   },
   prescriptions: {
     clientName: 'string', date: 'string', doctorOrOptometrist: 'string', od: 'object', os: 'object',
     pd: 'object', status: 'string', createdAt: 'string', updatedAt: 'string', createdBy: 'string',
-    updatedBy: 'string', version: 'number', deletedAt: 'object',
+    updatedBy: 'string', version: 'number', deletedAt: 'string',
   },
   sales: {
     saleNumber: 'string', date: 'string', productId: 'string', productDescription: 'string',
     productPurchasePrice: 'number', listPrice: 'number', discount: 'number', finalPrice: 'number',
     estimatedGrossMargin: 'number', paymentMethod: 'string', receiptReference: 'string',
-    operatorId: 'string', operatorName: 'string', createdAt: 'string', deletedAt: 'object',
+    operatorId: 'string', operatorName: 'string', createdAt: 'string', deletedAt: 'string',
   },
 };
 
@@ -124,6 +124,15 @@ function validateRequiredFields(collection: MigrationCollection, item: LegacyRec
     if (field === 'deletedAt' && value === null) continue;
     if (!hasExpectedType(value, expected)) missing.push(field);
   }
+  const allowedValues: Partial<Record<MigrationCollection, Record<string, string[]>>> = {
+    eyeglasses: { gender: ['Uomo', 'Donna', 'Unisex'], status: ['Disponibile', 'Venduto'] },
+    prescriptions: { status: ['CONFERMATA', 'DA_VERIFICARE', 'COMPLETA'] },
+    sales: { paymentMethod: ['Contanti', 'POS / Carta', 'Carta', 'Bonifico', 'Bonifico Bancario', 'Satispay / Altro', 'Altro'] },
+  };
+  for (const [field, values] of Object.entries(allowedValues[collection] ?? {})) {
+    if (typeof item[field] === 'string' && !values.includes(item[field] as string)) missing.push(field);
+  }
+
   if (collection === 'prescriptions') {
     for (const eye of ['od', 'os']) {
       const data = item[eye];
